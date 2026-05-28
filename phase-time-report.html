@@ -266,7 +266,7 @@
     </div>
     <div class="chart-card" style="grid-column:1/-1;">
       <h3>Quarter over Quarter &#8212; Avg Days per Phase</h3>
-      <div class="chart-sub">Quarterly averages across all weekly snapshots &#183; Falling bars = time savings &#183; <span style="color:#e3b341;font-style:italic;">&#9888; Q2 2026 (Feb&#8211;Apr) = first batch of workflows, some carried over mid-flight &#8212; treat as baseline. Q3 2026 onwards = fresh quarterly roadmap, full phase 1&#8594;5 journeys.</span></div>
+      <div class="chart-sub">Quarterly averages across all weekly snapshots &#183; Falling bars = time savings &#183; <span style="color:#e3b341;font-style:italic;">&#9888; Q1 2026 (Feb&#8211;Apr) = first batch of workflows, some carried over mid-flight &#8212; treat as baseline. Q2 2026 onwards = fresh quarterly roadmap, full phase 1&#8594;5 journeys.</span></div>
       <canvas id="chart-qoq" style="max-height:320px;"></canvas>
     </div>
   </div>
@@ -591,14 +591,14 @@ function saveSnapshot(snap) {
   RAW.forEach(i => {
     if (!i.cr) return;
     const d = new Date(i.cr + 'T12:00:00');
-    // P44 fiscal quarters: Q1=Nov-Jan, Q2=Feb-Apr, Q3=May-Jul, Q4=Aug-Oct
+    // P44 fiscal quarters: Q1=Feb-Apr, Q2=May-Jul, Q3=Aug-Oct, Q4=Nov-Jan
     const mo = d.getMonth() + 1; // 1-12
     let qn, qy;
-    if (mo >= 11) { qn = 1; qy = d.getFullYear() + 1; }
-    else if (mo === 1) { qn = 1; qy = d.getFullYear(); }
-    else if (mo <= 4) { qn = 2; qy = d.getFullYear(); }
-    else if (mo <= 7) { qn = 3; qy = d.getFullYear(); }
-    else { qn = 4; qy = d.getFullYear(); }
+    if (mo >= 2 && mo <= 4) { qn = 1; qy = d.getFullYear(); }
+    else if (mo >= 5 && mo <= 7) { qn = 2; qy = d.getFullYear(); }
+    else if (mo >= 8 && mo <= 10) { qn = 3; qy = d.getFullYear(); }
+    else if (mo >= 11) { qn = 4; qy = d.getFullYear(); }
+    else { qn = 4; qy = d.getFullYear() - 1; } // Jan &#8594; Q4 of prior year
     const q = 'Q' + qn + ' ' + qy;
     const m = i.cr.slice(0, 7); // YYYY-MM
     quarters.add(q);
@@ -752,11 +752,11 @@ function quarterLabel(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   const mo = d.getMonth() + 1;
   let qn, qy;
-  if (mo >= 11) { qn = 1; qy = d.getFullYear() + 1; }
-  else if (mo === 1) { qn = 1; qy = d.getFullYear(); }
-  else if (mo <= 4) { qn = 2; qy = d.getFullYear(); }
-  else if (mo <= 7) { qn = 3; qy = d.getFullYear(); }
-  else { qn = 4; qy = d.getFullYear(); }
+  if (mo >= 2 && mo <= 4) { qn = 1; qy = d.getFullYear(); }
+  else if (mo >= 5 && mo <= 7) { qn = 2; qy = d.getFullYear(); }
+  else if (mo >= 8 && mo <= 10) { qn = 3; qy = d.getFullYear(); }
+  else if (mo >= 11) { qn = 4; qy = d.getFullYear(); }
+  else { qn = 4; qy = d.getFullYear() - 1; } // Jan &#8594; Q4 of prior year
   return `Q${qn} ${qy}`;
 }
 
@@ -801,7 +801,7 @@ function renderQoQ(key) {
       return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length * 10)/10 : null;
     });
     const isCurrentQ = q === quarterLabel(new Date().toISOString().slice(0,10));
-    const isCarryOver = q === 'Q2 2026'; // Q2 2026 = Feb-Apr, first batch were carry-overs from Q1 // Workflows carried over from Q4, not full-quarter journeys
+    const isCarryOver = q === 'Q1 2026'; // Q1 2026 = Feb-Apr, first batch were carry-overs &#8212; not full-quarter journeys
     const color = isCarryOver ? '#8b949e' : Q_COLORS[qi % Q_COLORS.length];
     return {
       label: q + (isCarryOver ? ' (first batch, baseline)' : isCurrentQ ? ' (in progress)' : ''),
@@ -950,11 +950,11 @@ function applyFilters() {
       const d = new Date(issue.cr + 'T12:00:00');
       const mo = d.getMonth() + 1;
       let qn, qy;
-      if (mo >= 11) { qn = 1; qy = d.getFullYear() + 1; }
-      else if (mo === 1) { qn = 1; qy = d.getFullYear(); }
-      else if (mo <= 4) { qn = 2; qy = d.getFullYear(); }
-      else if (mo <= 7) { qn = 3; qy = d.getFullYear(); }
-      else { qn = 4; qy = d.getFullYear(); }
+      if (mo >= 2 && mo <= 4) { qn = 1; qy = d.getFullYear(); }
+      else if (mo >= 5 && mo <= 7) { qn = 2; qy = d.getFullYear(); }
+      else if (mo >= 8 && mo <= 10) { qn = 3; qy = d.getFullYear(); }
+      else if (mo >= 11) { qn = 4; qy = d.getFullYear(); }
+      else { qn = 4; qy = d.getFullYear() - 1; }
       const q = 'Q' + qn + ' ' + qy;
       if (q !== quarterFilter) return false;
     }
