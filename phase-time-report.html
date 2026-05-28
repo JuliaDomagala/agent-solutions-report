@@ -248,6 +248,40 @@
     <button class="clear-btn" id="clear-snapshots-btn">Clear history</button>
   </div>
   <div id="snapshot-notice" class="snapshot-notice" style="display:none"></div>
+
+  <!-- OKR 6.3 tracker -->
+  <div id="okr-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.5px;">OKR 6.3</span>
+      <span style="font-size:12px;color:var(--text-muted);">Reduce time to go live by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2027) &#183; Active build time only (excl. blocked &amp; waiting)</span>
+    </div>
+    <div style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Q1 2026 Baseline</div>
+        <div id="okr-baseline" style="font-size:22px;font-weight:700;color:var(--text);">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Target (&#8722;30%)</div>
+        <div id="okr-target" style="font-size:22px;font-weight:700;color:var(--yellow);">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Current (latest week)</div>
+        <div id="okr-current" style="font-size:22px;font-weight:700;">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Reduction achieved</div>
+        <div id="okr-progress" style="font-size:22px;font-weight:700;">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;flex:1;min-width:180px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Progress to 30% goal</div>
+        <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;">
+          <div id="okr-bar" style="height:100%;background:var(--green);border-radius:4px;width:0%;transition:width 0.5s;"></div>
+        </div>
+        <div id="okr-bar-label" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="trends-empty" class="trends-empty" style="display:none">
     <div class="icon">&#128202;</div>
     <div>Not enough data yet &#8212; trends build up as you open this report daily.</div>
@@ -646,6 +680,43 @@ function saveTodaySnapshot() {
 
 let flowChart = null, phaseChart = null;
 
+// &#9472;&#9472; OKR 6.3 tracker &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+function renderOKR(snaps) {
+  const card = document.getElementById('okr-card');
+  // Only show for new-workflow (OKR is team active time)
+  const nwSnaps = snaps.filter(s => s['new-workflow']?.flowTime != null);
+  if (nwSnaps.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Baseline = average active flowTime across Q1 2026 snapshots (Feb&#8211;Apr)
+  const q1Snaps = nwSnaps.filter(s => quarterLabel(s.date) === 'Q1 2026');
+  const q1Vals = q1Snaps.map(s => s['new-workflow'].flowTime).filter(v => v != null);
+  const baseline = q1Vals.length > 0 ? Math.round(q1Vals.reduce((a,b)=>a+b,0)/q1Vals.length*10)/10 : null;
+  const target = baseline != null ? Math.round(baseline * 0.70 * 10) / 10 : null;
+
+  // Current = latest week's active flowTime
+  const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
+
+  document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '&#8212;';
+  document.getElementById('okr-target').textContent = target != null ? '&#8804; ' + target + ' bd' : '&#8212;';
+
+  const el = document.getElementById('okr-current');
+  el.textContent = current != null ? current + ' bd' : '&#8212;';
+
+  if (baseline != null && current != null) {
+    const reductionPct = Math.round((baseline - current) / baseline * 100);
+    const progressPct = Math.max(0, Math.min(100, Math.round(reductionPct / 30 * 100)));
+    const progEl = document.getElementById('okr-progress');
+    progEl.textContent = reductionPct > 0 ? '&#8722;' + reductionPct + '%' : '+' + Math.abs(reductionPct) + '%';
+    progEl.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 0 ? 'var(--yellow)' : 'var(--red)';
+    el.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--text)';
+    document.getElementById('okr-bar').style.width = progressPct + '%';
+    document.getElementById('okr-bar').style.background = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--accent)';
+    document.getElementById('okr-bar-label').textContent = progressPct + '% of 30% goal achieved';
+  }
+  return { baseline, target };
+}
+
 function renderTrends(typeFilter) {
   const snaps = loadSnapshots();
   const trendsGrid = document.getElementById('trends-grid');
@@ -654,6 +725,7 @@ function renderTrends(typeFilter) {
   trendsEmpty.style.display = 'none';
 
   const key = typeFilter || 'new-workflow';
+  const okrData = renderOKR(snaps);
   const excludeBlocked = document.getElementById('trends-exclude-blocked').checked;
   const BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","Not Started"]);
   const activePhasesOnly = TREND_PHASES.filter(p => !BLOCKED_PHASES.has(p));
@@ -698,6 +770,21 @@ function renderTrends(typeFilter) {
     fill: excludeBlocked,
     spanGaps: true,
   });
+
+  // OKR target line
+  if (okrData?.target != null) {
+    flowDatasets.push({
+      label: 'OKR 6.3 target (&#8722;30%)',
+      data: snaps.map(() => okrData.target),
+      borderColor: '#f85149',
+      borderWidth: 1.5,
+      borderDash: [6, 4],
+      pointRadius: 0,
+      tension: 0,
+      fill: false,
+      spanGaps: true,
+    });
+  }
 
   flowChart = new Chart(ctxFlow, {
     type: 'line',
