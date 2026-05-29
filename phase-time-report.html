@@ -254,7 +254,7 @@
   <div id="okr-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:none;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
       <span style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.5px;">OKR 6.3</span>
-      <span style="font-size:12px;color:var(--text-muted);">Reduce time to reach Dev Ready by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2026) &#183; Ph1+Ph2+Ph3 active time only (excl. Ph4, Ph5, blocked &amp; waiting)</span>
+      <span style="font-size:12px;color:var(--text-muted);">Reduce time to go live by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2026) &#183; Active build time only (excl. blocked &amp; waiting)</span>
     </div>
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div>
@@ -289,41 +289,51 @@
     <div style="margin-top:8px;font-size:12px;">Today's snapshot has been saved. Come back tomorrow to start seeing trends.</div>
   </div>
   <div class="trends-grid" id="trends-grid">
-    <div class="chart-card" style="grid-column:1/-1;">
-      <h3>Velocity Story &#8212; Completions Up, Build Time Down</h3>
-      <div class="chart-sub">PROMPT tickets completed (Beta/GA) per quarter (bars, left axis) &#183; Blue line = avg calendar time Ph1&#8594;Ph5 incl. blocked/waiting &#183; Green dashed = active phase time only &#183; Rising bars + falling lines = shipping more &amp; faster</div>
-      <canvas id="chart-velocity" style="max-height:320px;"></canvas>
-    </div>
-    <div class="chart-card" style="grid-column:1/-1;">
-      <h3>Days from Ph1 to Dev Ready (Ph4) &#8212; Speed Trend</h3>
-      <div class="chart-sub">Each dot = one PROMPT ticket that reached Ph4, plotted by when it entered Ph4 &#183; Blue = calendar days Ph1&#8594;Ph4 (incl. blocked/waiting) &#183; Green = active phase days only (Ph1+Ph2+Ph3) &#183; Falling trend = getting faster</div>
-      <canvas id="chart-ph4-scatter" style="max-height:340px;"></canvas>
-    </div>
-    <div class="chart-card" style="grid-column:1/-1;">
-      <h3>WIP Snapshot &#8212; How the Quarter Ended</h3>
-      <div class="chart-sub">PROMPT ticket distribution by status at the end of each quarter &#183; Stacked by phase, blocked/waiting, and not started &#183; Shows pipeline shape and where work is piling up</div>
-      <canvas id="chart-wip" style="max-height:320px;"></canvas>
+    <div class="chart-card">
+      <h3>Phase 1 &#8594; Phase 5 Flow Time</h3>
+      <div class="chart-sub">Blue = calendar time including blocked/waiting gaps &#183; Green dashed = active phase time only (Ph1&#8211;5). Gap between lines = time lost to blockers. <span style="color:#e3b341;font-style:italic;">&#9888; Early weeks (Mar&#8211;Apr) reflect Jira migration backfill &#8212; treat as indicative.</span></div>
+      <canvas id="chart-flow"></canvas>
     </div>
     <div class="chart-card">
-      <h3>Weekly Intake &#8212; Tickets Entering Dev Ready (Ph4)</h3>
-      <div class="chart-sub">PROMPT tickets that first reached Ph4 each week &#183; All weeks shown, including zero weeks &#183; Uses exact phase entry dates from Jira changelog</div>
-      <div id="ph4-entry-warning" style="color:#e3b341;font-size:11px;margin-bottom:6px;">&#9888; Phase entry dates not yet available &#8212; using last-transition date as proxy.</div>
+      <h3>Average Days per Phase Over Time</h3>
+      <div class="chart-sub">How long tickets are spending in each phase &#8212; flat or falling lines mean improvement</div>
+      <canvas id="chart-phases"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Quarter over Quarter &#8212; Avg Days per Phase</h3>
+      <div class="chart-sub">Quarterly averages across all weekly snapshots &#183; Falling bars = time savings &#183; <span style="color:#e3b341;font-style:italic;">&#9888; Q1 2026 (Feb&#8211;Apr) = first batch of workflows, some carried over mid-flight &#8212; treat as baseline. Q2 2026 onwards = fresh quarterly roadmap, full phase 1&#8594;5 journeys.</span></div>
+      <canvas id="chart-qoq" style="max-height:320px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Agent Solutions Handoffs &#8212; Tickets Reaching Ready for Development per Quarter</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counted in the quarter they first entered <strong style="color:var(--green)">Phase 4: Ready for Development</strong> &#8212; this is when the Agent Solutions team's build work is done &#183; Stacked by where each ticket sits today &#183; Engineering may pick up in a later quarter</div>
+      <canvas id="chart-throughput" style="max-height:340px;"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Pipeline Intake &#8212; Tickets Entering Dev Ready per Quarter</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counts tickets that reached <strong>Phase 4: Ready for Development</strong> &#183; Grouped by the quarter they first entered Ph4 &#183; Rising bars = more builds handed to engineering</div>
+      <div id="ph4-entry-warning" style="color:#e3b341;font-size:11px;margin-bottom:6px;">&#9888; Phase entry dates not yet available &#8212; using last-transition date as proxy. Dates will be accurate from tomorrow's 8am refresh.</div>
       <canvas id="chart-ph4-entry" style="max-height:300px;"></canvas>
     </div>
     <div class="chart-card">
-      <h3>Quarterly Intake &#8212; Tickets Entering Dev Ready (Ph4)</h3>
-      <div class="chart-sub">PROMPT tickets that first reached Ph4 each quarter &#183; Quarter over quarter comparison &#183; Q1=Feb&#8211;Apr &middot; Q2=May&#8211;Jul &middot; Q3=Aug&#8211;Oct &middot; Q4=Nov&#8211;Jan</div>
-      <canvas id="chart-ph4-qoq" style="max-height:300px;"></canvas>
-    </div>
-    <div class="chart-card">
-      <h3>Current Pipeline &#8212; Tickets by Phase</h3>
-      <div class="chart-sub">PROMPT tickets only &#183; Live snapshot of where the full portfolio sits today &#183; Updated daily</div>
+      <h3>All-Time Programme Completion &#8212; Tickets by Current Phase</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Where each ticket currently sits across the full build &#183; Shows the shape of the entire portfolio</div>
       <canvas id="chart-alltime" style="max-height:300px;"></canvas>
     </div>
     <div class="chart-card" style="grid-column:1/-1;">
-      <h3>Quarterly Throughput &#8212; Completed Tickets</h3>
-      <div class="chart-sub">PROMPT tickets that reached Beta or GA &#183; Counted once in the quarter they completed &#183; Rising bars = more workflows shipped</div>
-      <canvas id="chart-throughput" style="max-height:320px;"></canvas>
+      <h3>WIP Snapshot &#8212; Portfolio State at End of Each Quarter</h3>
+      <div class="chart-sub">How many PROMPT tickets were in each phase at the latest snapshot per quarter &#183; Builds up over time as weekly snapshots are collected &#183; <span style="color:#e3b341;">Data from Q2 2026 onwards (snapshots started May 2026)</span></div>
+      <canvas id="chart-wip" style="max-height:320px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Phase Gate Time &#8212; Avg Business Days from Creation to Each Milestone</h3>
+      <div class="chart-sub">New workflow PROMPT tickets only &#183; Shows how long it takes (on average) before a ticket reaches each phase &#183; Based on cumulative phase time in the ticket &#183; Longer bars = more pre-work before that gate &#183; Only tickets that reached each phase are included</div>
+      <canvas id="chart-gate-time" style="max-height:320px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Velocity Story &#8212; Completions Up, Flow Time Down</h3>
+      <div class="chart-sub">Dark green bars: tickets handed to engineering (reached Ph4) per quarter &#8212; Agent Solutions' output &#183; Light green bars: tickets that shipped (Beta/GA) per quarter &#8212; may lag by a quarter or more &#183; Lines (right axis): flow time and time-to-Ph4 trends &#183; Rising bars + falling lines = team is handing off more and building faster</div>
+      <canvas id="chart-velocity" style="max-height:320px;"></canvas>
     </div>
   </div>
 </div>
@@ -434,8 +444,10 @@
     <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
       Two signals on one chart to tell the velocity story:<br><br>
       <strong style="color:#3fb950;">Green bars (left axis) &#8212; Completions per quarter:</strong> Count of PROMPT tickets that reached Beta or GA, assigned to the quarter of their completion date. Same logic as the Throughput chart.<br><br>
-      <strong style="color:#58a6ff;">Blue line (right axis) &#8212; Avg active flow time:</strong> The active flow time reading from the <strong style="color:var(--text);">latest weekly snapshot</strong> within each quarter. This reflects the speed of work in motion at the end of that period.<br><br>
-      The goal: <strong style="color:var(--text);">bars rising, line falling</strong> &#8212; more completions AND faster delivery. If the line is rising while bars are flat, the team is getting slower without shipping more.
+      <strong style="color:#58a6ff;">Blue line &#8212; Avg active flow time:</strong> The active flow time reading from the latest weekly snapshot within each quarter. Reflects the speed of work in motion.<br><br>
+      <strong style="color:#a371f7;">Purple line &#8212; Avg time to reach Ph4, excl. blocked:</strong> For tickets that have entered Phase 4 (Ready for Development), the cumulative business days spent in active phases only (Not Started + Ph1 + Ph2 + Ph3) before reaching Ph4. Assigned to the quarter the ticket first entered Ph4. A falling line means pre-engineering work is getting faster.<br><br>
+      <strong style="color:#f85149;">Red dashed line &#8212; Avg time to reach Ph4, incl. blocked:</strong> Same as above but includes all blocked and waiting time accumulated before Ph4. The gap between the red and purple lines represents the cost of blockages. If the gap widens, blocked time is increasing even if active work is speeding up.<br><br>
+      The goal: <strong style="color:var(--text);">bars rising, all lines falling</strong>. If purple and red lines converge, blocked time is reducing.
     </div>
   </div>
 
@@ -598,10 +610,10 @@ function phaseExitDate(ticket, wfIdx) {
 // quarterFilter: if set, "final avg" only counts tickets that exited the phase in that quarter.
 //                "active now" ALWAYS ignores quarterFilter &#8212; shows current state regardless of start date.
 function computeAverages(rows, quarterFilter) {
-  const passedTotals = {}, passedCounts = {};
+  const passedTotals = {}, passedCounts = {}, passedTimedCounts = {};
   const activeTotals = {}, activeCounts = {};
   PHASE_COLS.forEach(p => {
-    passedTotals[p] = 0; passedCounts[p] = 0;
+    passedTotals[p] = 0; passedCounts[p] = 0; passedTimedCounts[p] = 0;
     activeTotals[p] = 0; activeCounts[p] = 0;
   });
 
@@ -625,22 +637,22 @@ function computeAverages(rows, quarterFilter) {
         if (v > 0) activeTotals[p] += v;
       }
 
-      // Passed through: apply quarter filter using exit date
-      if (isPassed && v > 0) {
+      // Passed through: count ALL tickets that passed through this phase (even if v=0),
+      // but only include v>0 tickets in the average calculation
+      if (isPassed) {
         if (quarterFilter) {
-          // Determine when this ticket exited this phase
           const exitDate = wfIdx >= 0 ? phaseExitDate(issue, wfIdx) : (issue.lt || issue.cr);
           const exitQ = dateToQuarter(exitDate);
-          if (exitQ !== quarterFilter) return; // skip &#8212; exited in a different quarter
+          if (exitQ !== quarterFilter) return;
         }
-        passedCounts[p]++;
-        passedTotals[p] += v;
+        passedCounts[p]++; // count regardless of v &#8212; ticket passed through
+        if (v > 0) { passedTotals[p] += v; passedTimedCounts[p]++; } // only timed tickets in avg
       }
     });
   });
   return PHASE_COLS.map(p => ({
     phase: p,
-    passedAvg:  passedCounts[p] > 0 ? Math.round(passedTotals[p] / passedCounts[p] * 10) / 10 : null,
+    passedAvg:  passedTimedCounts[p] > 0 ? Math.round(passedTotals[p] / passedTimedCounts[p] * 10) / 10 : null,
     activeAvg:  activeCounts[p] > 0 ? Math.round(activeTotals[p] / activeCounts[p] * 10) / 10 : null,
     passedCount: passedCounts[p],
     activeCount: activeCounts[p],
@@ -673,8 +685,8 @@ function buildCards(rows) {
     const activePct = Math.round(((a.activeAvg||0) / maxAvg) * 100);
 
     const passedLabel = quarterFilter
-      ? `final avg in ${quarterFilter} &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`
-      : `final avg &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`;
+      ? `passed through in ${quarterFilter} &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`
+      : `passed through &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`;
 
     const passedRow = a.passedCount > 0 ? `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
@@ -824,31 +836,19 @@ const PHASE_COLORS = [
 
 function computeSnapshot(rows) {
   // Flow time: avg (Ph1+Ph2+Ph3+Ph4+Ph5) for tickets that have Phase 1 data
-  // Start from Phase 1 entry, NOT Not Started
   const PH1 = "Phase 1: Alignment & Requirements";
   const PH5 = "Phase 5: AIA Integration";
-  const BLOCKED_PHASES = ["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","Waiting/Blocked"];
   const flowTickets = rows.filter(i => (i.p[PH1]||0) > 0 && !EXCLUDE_FROM_AVG.has(i.af||i.a));
-  let flowTime = null, totalFlowTime = null;
+  let flowTime = null;
   if (flowTickets.length > 0) {
-    const activeTotal = flowTickets.reduce((sum, i) => {
+    const total = flowTickets.reduce((sum, i) => {
       return sum + (i.p["Phase 1: Alignment & Requirements"]||0)
                  + (i.p["Phase 2: Prompt Build & Internal Validation"]||0)
                  + (i.p["Phase 3: External Testing"]||0)
                  + (i.p["Phase 4: Ready for Development"]||0)
                  + (i.p["Phase 5: AIA Integration"]||0);
     }, 0);
-    const calendarTotal = flowTickets.reduce((sum, i) => {
-      const active = (i.p["Phase 1: Alignment & Requirements"]||0)
-                   + (i.p["Phase 2: Prompt Build & Internal Validation"]||0)
-                   + (i.p["Phase 3: External Testing"]||0)
-                   + (i.p["Phase 4: Ready for Development"]||0)
-                   + (i.p["Phase 5: AIA Integration"]||0);
-      const blocked = BLOCKED_PHASES.reduce((s, bp) => s + (i.p[bp]||0), 0);
-      return sum + active + blocked;
-    }, 0);
-    flowTime = Math.round(activeTotal / flowTickets.length * 10) / 10;
-    totalFlowTime = Math.round(calendarTotal / flowTickets.length * 10) / 10;
+    flowTime = Math.round(total / flowTickets.length * 10) / 10;
   }
   // Per phase averages
   const phases = {};
@@ -864,7 +864,7 @@ function computeSnapshot(rows) {
     const s = i.c || 'Not Started';
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
-  return { flowTime, totalFlowTime, phases, count: rows.length, flowCount: flowTickets.length, statusCounts };
+  return { flowTime, phases, count: rows.length, flowCount: flowTickets.length, statusCounts };
 }
 
 function loadSnapshots() {
@@ -945,32 +945,24 @@ function saveTodaySnapshot() {
   return snaps;
 }
 
-let ph4ScatterChart = null;
+let flowChart = null, phaseChart = null;
 
 // &#9472;&#9472; OKR 6.3 tracker &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 function renderOKR(snaps) {
   const card = document.getElementById('okr-card');
-  // OKR metric = Ph1+Ph2+Ph3 only (time to reach Dev Ready, active phases)
-  const PH1 = 'Phase 1: Alignment & Requirements';
-  const PH2 = 'Phase 2: Prompt Build & Internal Validation';
-  const PH3 = 'Phase 3: External Testing';
-  function ph4EntryTime(snap) {
-    const p = snap?.phases || {};
-    const v = (p[PH1]||0) + (p[PH2]||0) + (p[PH3]||0);
-    return v > 0 ? Math.round(v * 10) / 10 : null;
-  }
-  const nwSnaps = snaps.filter(s => s['new-workflow'] && ph4EntryTime(s['new-workflow']) != null);
+  // Only show for new-workflow (OKR is team active time)
+  const nwSnaps = snaps.filter(s => s['new-workflow']?.flowTime != null);
   if (nwSnaps.length === 0) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  // Baseline = average Ph1+Ph2+Ph3 across Q1 2026 snapshots (Feb&#8211;Apr)
+  // Baseline = average active flowTime across Q1 2026 snapshots (Feb&#8211;Apr)
   const q1Snaps = nwSnaps.filter(s => quarterLabel(s.date) === 'Q1 2026');
-  const q1Vals = q1Snaps.map(s => ph4EntryTime(s['new-workflow'])).filter(v => v != null);
+  const q1Vals = q1Snaps.map(s => s['new-workflow'].flowTime).filter(v => v != null);
   const baseline = q1Vals.length > 0 ? Math.round(q1Vals.reduce((a,b)=>a+b,0)/q1Vals.length*10)/10 : null;
   const target = baseline != null ? Math.round(baseline * 0.70 * 10) / 10 : null;
 
-  // Current = latest week's Ph1+Ph2+Ph3
-  const current = ph4EntryTime(nwSnaps[nwSnaps.length - 1]['new-workflow']);
+  // Current = latest week's active flowTime
+  const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
 
   document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '\u2014';
   document.getElementById('okr-target').textContent = target != null ? '&#8804; ' + target + ' bd' : '\u2014';
@@ -1000,31 +992,139 @@ function renderTrends(typeFilter) {
   trendsEmpty.style.display = 'none';
 
   const key = typeFilter || 'new-workflow';
-  renderOKR(snaps);
+  const okrData = renderOKR(snaps);
+  const excludeBlocked = document.getElementById('trends-exclude-blocked').checked;
+  const BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","Not Started"]);
+  const activePhasesOnly = TREND_PHASES.filter(p => !BLOCKED_PHASES.has(p));
 
-  // Chart 1: Velocity story (completions + dual flow time lines)
-  buildVelocityChart(snaps, key);
+  const labels = snaps.map(s => {
+    const d = new Date(s.date + 'T12:00:00');
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  });
 
-  // Chart 2: Days to Ph4 scatter + dual trend lines
-  buildPh4ScatterChart();
+  // Chart 1: Flow time &#8212; two lines: totalFlowTime (calendar, incl. blocked) and flowTime (active Ph1-5 only)
+  // When "exclude blocked" is checked, hide the totalFlowTime line so the gap disappears
+  const totalFlowData = snaps.map(s => (s[key]||s.all)?.totalFlowTime ?? null);
+  const activeFlowData = snaps.map(s => (s[key]||s.all)?.flowTime ?? null);
+  const ctxFlow = document.getElementById('chart-flow').getContext('2d');
+  if (flowChart) flowChart.destroy();
 
-  // Chart 3: WIP snapshot (quarter-end stacked bar)
-  buildWipChart();
+  const flowDatasets = [];
+  if (!excludeBlocked) {
+    flowDatasets.push({
+      label: 'Calendar time (incl. blocked/waiting)',
+      data: totalFlowData,
+      borderColor: '#58a6ff',
+      backgroundColor: 'rgba(88,166,255,0.08)',
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: '#58a6ff',
+      tension: 0.3,
+      fill: true,
+      spanGaps: true,
+    });
+  }
+  flowDatasets.push({
+    label: 'Active phase time only (Ph1&#8211;5)',
+    data: activeFlowData,
+    borderColor: '#3fb950',
+    backgroundColor: 'rgba(63,185,80,0.08)',
+    borderWidth: 2,
+    borderDash: excludeBlocked ? [] : [5,3],
+    pointRadius: 3,
+    pointBackgroundColor: '#3fb950',
+    tension: 0.3,
+    fill: excludeBlocked,
+    spanGaps: true,
+  });
 
-  // Chart 4: Weekly intake into Ph4
+  // OKR target line
+  if (okrData?.target != null) {
+    flowDatasets.push({
+      label: 'OKR 6.3 target (\u221230%)',
+      data: snaps.map(() => okrData.target),
+      borderColor: '#f85149',
+      borderWidth: 1.5,
+      borderDash: [6, 4],
+      pointRadius: 0,
+      tension: 0,
+      fill: false,
+      spanGaps: true,
+    });
+  }
+
+  flowChart = new Chart(ctxFlow, {
+    type: 'line',
+    data: { labels, datasets: flowDatasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { color: '#8b949e', font:{size:10}, boxWidth:10, padding:12 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y + ' bd' : 'No data') } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font:{size:11} } },
+        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font:{size:11}, callback: v => v+'d' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Chart 2: Per-phase averages &#8212; respect blocked/waiting filter
+  const phasesToShow = excludeBlocked ? activePhasesOnly : TREND_PHASES;
+  const datasets = phasesToShow.map((phase) => ({
+    label: PHASE_SHORT[phase] || phase,
+    data: snaps.map(s => (s[key]||s.all)?.phases?.[phase] ?? null),
+    borderColor: PHASE_COLORS[TREND_PHASES.indexOf(phase) % PHASE_COLORS.length],
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    pointRadius: 3,
+    tension: 0.3,
+    spanGaps: true,
+  })).filter(ds => ds.data.some(v => v !== null));
+
+  const ctxPhase = document.getElementById('chart-phases').getContext('2d');
+  if (phaseChart) phaseChart.destroy();
+  phaseChart = new Chart(ctxPhase, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#8b949e', font:{size:10}, boxWidth:10, padding:12 } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y + 'd' : '&#8211;') } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font:{size:11} } },
+        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font:{size:11}, callback: v => v+'d' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // Chart 3: Quarter over Quarter
+  renderQoQ(key);
+
+  // Chart 4: Quarterly Throughput
+  buildThroughputChart();
+
+  // Chart 5: Pipeline Intake (Ph4 entry per quarter)
   buildPh4EntryChart();
 
-  // Chart 4b: Quarterly intake into Ph4 (QoQ)
-  buildPh4QoQChart();
-
-  // Chart 5: Current pipeline snapshot
+  // Chart 6: All-Time Phase Completion
   buildAllTimeChart();
 
-  // Chart 6: Quarterly throughput
-  buildThroughputChart();
+  // Chart 7: WIP Snapshot &#8212; end-of-quarter portfolio state
+  buildWipChart();
+
+  // Chart 8: Phase Gate Time &#8212; avg days from creation to each milestone
+  buildGateTimeChart();
+
+  // Chart 9: Velocity Story &#8212; completions up, flow time down
+  buildVelocityChart();
 }
 
-// &#9472;&#9472; Quarter label helper &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+// &#9472;&#9472; Quarter-over-Quarter Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let qoqChart = null;
+
 function quarterLabel(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   const mo = d.getMonth() + 1;
@@ -1037,8 +1137,122 @@ function quarterLabel(dateStr) {
   return `Q${qn} ${qy}`;
 }
 
-// renderQoQ removed — replaced by Ph4 scatter chart
+const QOQ_PHASES = [
+  "Phase 1: Alignment & Requirements",
+  "Phase 2: Prompt Build & Internal Validation",
+  "Phase 3: External Testing",
+  "Phase 4: Ready for Development",
+  "Phase 5: AIA Integration",
+];
+const QOQ_SHORT = {
+  "Phase 1: Alignment & Requirements": "Ph 1",
+  "Phase 2: Prompt Build & Internal Validation": "Ph 2",
+  "Phase 3: External Testing": "Ph 3",
+  "Phase 4: Ready for Development": "Ph 4",
+  "Phase 5: AIA Integration": "Ph 5",
+};
+// Distinct colours per quarter &#8212; will cycle if more than 6 quarters
+const Q_COLORS = ['#58a6ff','#3fb950','#ffa657','#a371f7','#f85149','#d29922'];
 
+function renderQoQ(key) {
+  const snaps = loadSnapshots();
+
+  // Group snapshot data by quarter
+  const byQ = {};
+  snaps.forEach(s => {
+    const q = quarterLabel(s.date);
+    if (!byQ[q]) byQ[q] = [];
+    byQ[q].push(s[key] || s.all);
+  });
+
+  const quarters = Object.keys(byQ).sort();
+  if (quarters.length === 0) return;
+
+  // For each quarter + phase: average the weekly phase values
+  const phaseLabels = QOQ_PHASES.map(p => QOQ_SHORT[p]);
+
+  const qDatasets = quarters.map((q, qi) => {
+    const snapGroup = byQ[q].filter(s => s && s.phases);
+    const phaseAvgs = QOQ_PHASES.map(phase => {
+      const vals = snapGroup.map(s => s.phases?.[phase]).filter(v => v != null && v > 0);
+      return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length * 10)/10 : null;
+    });
+    const isCurrentQ = q === quarterLabel(new Date().toISOString().slice(0,10));
+    const isCarryOver = q === 'Q1 2026'; // Q1 2026 = Feb-Apr, first batch were carry-overs &#8212; not full-quarter journeys
+    const color = isCarryOver ? '#8b949e' : Q_COLORS[qi % Q_COLORS.length];
+    return {
+      label: q + (isCarryOver ? ' (first batch, baseline)' : isCurrentQ ? ' (in progress)' : ''),
+      data: phaseAvgs,
+      backgroundColor: color + (isCarryOver ? '44' : isCurrentQ ? '55' : 'bb'),
+      borderColor: color,
+      borderWidth: isCarryOver ? 1 : isCurrentQ ? 1 : 2,
+      borderDash: isCarryOver ? [3,3] : isCurrentQ ? [4,3] : [],
+    };
+  });
+
+  // Also add a "flow time" grouped set at the end as a separate group
+  // We'll show it as two extra bars: totalFlowTime and flowTime per quarter
+  const flowDatasets = [
+    {
+      label: 'Flow (calendar)',
+      data: quarters.map(q => {
+        const vals = byQ[q].filter(s=>s).map(s=>s.totalFlowTime).filter(v=>v!=null);
+        return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null;
+      }),
+      backgroundColor: '#58a6ff44',
+      borderColor: '#58a6ff',
+      borderWidth: 2,
+      type: 'line',
+      yAxisID: 'y',
+      tension: 0.3,
+      pointRadius: 5,
+      spanGaps: true,
+    },
+    {
+      label: 'Flow (active only)',
+      data: quarters.map(q => {
+        const vals = byQ[q].filter(s=>s).map(s=>s.flowTime).filter(v=>v!=null);
+        return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null;
+      }),
+      backgroundColor: '#3fb95044',
+      borderColor: '#3fb950',
+      borderWidth: 2,
+      type: 'line',
+      yAxisID: 'y',
+      tension: 0.3,
+      pointRadius: 5,
+      spanGaps: true,
+    },
+  ];
+
+  const ctxQoQ = document.getElementById('chart-qoq').getContext('2d');
+  if (qoqChart) qoqChart.destroy();
+  qoqChart = new Chart(ctxQoQ, {
+    type: 'bar',
+    data: {
+      labels: phaseLabels,
+      datasets: [...qDatasets, ...flowDatasets],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8b949e', font:{size:11}, boxWidth:12, padding:14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y + 'd' : '&#8211;')
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font:{size:12,weight:'600'} } },
+        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font:{size:11}, callback: v => v+'d' }, beginAtZero: true }
+      }
+    }
+  });
+}
 
 // &#9472;&#9472; Quarterly Throughput Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 let throughputChart = null;
@@ -1092,18 +1306,28 @@ const THROUGHPUT_SHORT = {
 };
 
 function buildThroughputChart() {
-  // PROMPT new-workflow tickets only &#8212; COMPLETED tickets (Beta/GA) counted by completion quarter
-  // A ticket is "completed" when it reaches Phase 7: Beta or General Availability
-  const COMPLETED_PHASES = new Set(['Phase 7: Beta', 'General Availability']);
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT') && COMPLETED_PHASES.has(i.c));
+  // Agent Solutions Handoffs &#8212; PROMPT tickets that reached Ph4: Ready for Development
+  // Counted in the quarter they FIRST entered Ph4 (pe['Phase 4'] if available, else lt as proxy)
+  // Stacked by where the ticket sits TODAY &#8212; shows that Q2 handoffs may still be in eng pipeline
+  const PH4 = 'Phase 4: Ready for Development';
+  const tickets = RAW.filter(i => {
+    if (!i.k.startsWith('PROMPT')) return false;
+    // Has reached Ph4: either spent time there, currently there, or is in a later phase
+    if ((i.p[PH4] || 0) > 0) return true;
+    if (i.c === PH4) return true;
+    const curIdx = WORKFLOW_PHASE_ORDER.indexOf(i.c);
+    const ph4Idx = WORKFLOW_PHASE_ORDER.indexOf(PH4);
+    return curIdx > ph4Idx;
+  });
 
-  // Group by quarter of completion (lt = last transition date, i.e. when it reached Beta/GA)
+  // Quarter = when the ticket first entered Ph4
   const byQ = {};
   tickets.forEach(t => {
-    const dateStr = t.lt || t.cr;
+    const dateStr = (t.pe && t.pe[PH4]) ? t.pe[PH4] : (t.lt || t.cr);
     if (!dateStr) return;
     const q = quarterLabel(dateStr);
     if (!byQ[q]) byQ[q] = {};
+    // Stack by current status to show where handoffs ended up
     const phase = t.c || 'Not Started';
     byQ[q][phase] = (byQ[q][phase] || 0) + 1;
   });
@@ -1166,274 +1390,46 @@ function buildThroughputChart() {
   });
 }
 
-// &#9472;&#9472; Ph4 Scatter Chart &#8212; days from Ph1 to Dev Ready, dual trend lines &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
-
-function linearTrend(points) {
-  // points: [{x: Date.getTime(), y: number}]
-  const n = points.length;
-  if (n < 2) return null;
-  const sumX = points.reduce((s,p) => s+p.x, 0);
-  const sumY = points.reduce((s,p) => s+p.y, 0);
-  const sumXX = points.reduce((s,p) => s+p.x*p.x, 0);
-  const sumXY = points.reduce((s,p) => s+p.x*p.y, 0);
-  const denom = n*sumXX - sumX*sumX;
-  if (denom === 0) return null;
-  const m = (n*sumXY - sumX*sumY) / denom;
-  const b = (sumY - m*sumX) / n;
-  const minX = Math.min(...points.map(p=>p.x));
-  const maxX = Math.max(...points.map(p=>p.x));
-  return [
-    { x: new Date(minX).toISOString().slice(0,10), y: Math.round((m*minX+b)*10)/10 },
-    { x: new Date(maxX).toISOString().slice(0,10), y: Math.round((m*maxX+b)*10)/10 },
-  ];
-}
-
-function buildPh4ScatterChart() {
-  const PH4 = 'Phase 4: Ready for Development';
-  const PH1 = 'Phase 1: Alignment & Requirements';
-  const BLOCKED = ['Blocked','Waiting For Customer / 3rd Party','Waiting For Additional Info','Waiting/Blocked'];
-  const ph4PlusPhases = new Set([PH4,'Phase 5: AIA Integration','Phase 6: AP Integration','Phase 7: Beta','General Availability']);
-
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT') && !EXCLUDE_FROM_AVG.has(i.af||i.a));
-
-  // Only tickets that have reached Ph4 and have Ph1 entry date
-  const validTickets = tickets.filter(t => {
-    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4]||0) > 0);
-    const hasPh1 = t.pe && t.pe[PH1];
-    return hasPh4 && hasPh1;
-  });
-
-  if (validTickets.length < 2) {
-    // Not enough data
-    const ctx = document.getElementById('chart-ph4-scatter')?.getContext('2d');
-    if (ctx) {
-      ctx.font = '13px sans-serif'; ctx.fillStyle = '#8b949e'; ctx.textAlign = 'center';
-      ctx.fillText('Not enough Ph4 data yet &#8212; will populate as tickets reach Dev Ready', ctx.canvas.width/2, 60);
-    }
-    return;
-  }
-
-  // Build scatter points
-  const activePoints = [], calendarPoints = [];
-  validTickets.forEach(t => {
-    const ph4EntryDate = (t.pe && t.pe[PH4]) || t.lt || t.cr;
-    if (!ph4EntryDate) return;
-    const xDate = ph4EntryDate; // ISO date string for axis label
-    // Active time: Ph1+Ph2+Ph3 only
-    const active = (t.p[PH1]||0)
-      + (t.p['Phase 2: Prompt Build & Internal Validation']||0)
-      + (t.p['Phase 3: External Testing']||0);
-    // Calendar time: active + any blocked/waiting between Ph1 and Ph4
-    const blocked = BLOCKED.reduce((s, b) => s + (t.p[b]||0), 0);
-    const calendar = active + blocked;
-    activePoints.push({ x: xDate, y: Math.round(active*10)/10, label: t.k });
-    calendarPoints.push({ x: xDate, y: Math.round(calendar*10)/10, label: t.k });
-  });
-
-  // Compute trend lines (convert dates to timestamps for regression)
-  function toTimePts(pts) {
-    return pts.map(p => ({ x: new Date(p.x).getTime(), y: p.y }));
-  }
-  const activeTrend = linearTrend(toTimePts(activePoints));
-  const calendarTrend = linearTrend(toTimePts(calendarPoints));
-
-  const ctx = document.getElementById('chart-ph4-scatter').getContext('2d');
-  if (ph4ScatterChart) ph4ScatterChart.destroy();
-
-  const datasets = [
-    {
-      type: 'scatter',
-      label: 'Calendar days Ph1&#8594;Ph4 (incl. blocked/waiting)',
-      data: calendarPoints.map(p => ({ x: p.x, y: p.y, k: p.label })),
-      backgroundColor: 'rgba(88,166,255,0.6)',
-      borderColor: '#58a6ff',
-      pointRadius: 5,
-      pointHoverRadius: 7,
-    },
-    {
-      type: 'scatter',
-      label: 'Active phase days only (Ph1+Ph2+Ph3)',
-      data: activePoints.map(p => ({ x: p.x, y: p.y, k: p.label })),
-      backgroundColor: 'rgba(63,185,80,0.6)',
-      borderColor: '#3fb950',
-      pointRadius: 5,
-      pointHoverRadius: 7,
-    },
-  ];
-
-  if (calendarTrend) datasets.push({
-    type: 'line',
-    label: 'Trend (calendar)',
-    data: calendarTrend,
-    borderColor: '#58a6ff',
-    borderWidth: 2,
-    borderDash: [6,3],
-    pointRadius: 0,
-    fill: false,
-    tension: 0,
-  });
-  if (activeTrend) datasets.push({
-    type: 'line',
-    label: 'Trend (active only)',
-    data: activeTrend,
-    borderColor: '#3fb950',
-    borderWidth: 2,
-    borderDash: [6,3],
-    pointRadius: 0,
-    fill: false,
-    tension: 0,
-  });
-
-  ph4ScatterChart = new Chart(ctx, {
-    type: 'scatter',
-    data: { datasets },
-    options: {
-      responsive: true,
-      interaction: { mode: 'nearest', axis: 'xy', intersect: true },
-      plugins: {
-        legend: { position: 'bottom', labels: { color: '#8b949e', font:{size:11}, boxWidth:12, padding:14 } },
-        tooltip: {
-          callbacks: {
-            title: items => {
-              const pt = items[0].raw;
-              return (pt.k || '') + '  (' + (pt.x || '') + ')';
-            },
-            label: ctx => {
-              const dsLabel = ctx.dataset.label || '';
-              if (ctx.parsed?.y !== undefined) return dsLabel + ': ' + ctx.parsed.y + ' bd';
-              return dsLabel;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          type: 'category',
-          grid: { color: 'rgba(48,54,61,0.6)' },
-          ticks: { color: '#8b949e', font:{size:10}, maxRotation:45 },
-          title: { display: true, text: 'Date entered Ph4: Dev Ready', color: '#8b949e', font:{size:11} }
-        },
-        y: {
-          grid: { color: 'rgba(48,54,61,0.6)' },
-          ticks: { color: '#8b949e', font:{size:11}, callback: v => v+'d' },
-          beginAtZero: true,
-          title: { display: true, text: 'Business days from Ph1', color: '#8b949e', font:{size:11} }
-        }
-      }
-    }
-  });
-}
-
-// &#9472;&#9472; Weekly Intake Chart &#8212; tickets entering Ph4 per week &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+// &#9472;&#9472; Pipeline Intake Chart &#8212; tickets entering Ph4 per quarter &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 let ph4EntryChart = null;
 
 function buildPh4EntryChart() {
   const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
   const PH4 = 'Phase 4: Ready for Development';
+
+  // Tickets that have reached Ph4 or beyond
   const ph4PlusPhases = new Set([PH4, 'Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability']);
 
+  // Use pe (phase entry date) if available from changelog &#8212; else flag as estimate
   const hasPeData = tickets.some(t => t.pe && t.pe[PH4]);
+  const byQ = {};
+  tickets.forEach(t => {
+    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4] || 0) > 0);
+    if (!hasPh4) return;
+    // pe[PH4] = exact date ticket first entered Ph4 (available after refresh adds changelog data)
+    // fallback: use lt (last transition) or cr (creation) &#8212; less accurate
+    const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
+    if (!dateStr) return;
+    const q = quarterLabel(dateStr);
+    byQ[q] = (byQ[q] || 0) + 1;
+  });
+
+  // Show data quality warning if using fallback dates
   const warningEl = document.getElementById('ph4-entry-warning');
   if (warningEl) warningEl.style.display = hasPeData ? 'none' : '';
 
-  // Get monday of week for a date string
-  function weekStart(dateStr) {
-    const d = new Date(dateStr + 'T12:00:00');
-    const day = d.getDay(); // 0=Sun
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0,10);
-  }
-
-  const byWeek = {};
-  tickets.forEach(t => {
-    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4]||0) > 0);
-    if (!hasPh4) return;
-    const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
-    if (!dateStr) return;
-    const wk = weekStart(dateStr);
-    byWeek[wk] = (byWeek[wk] || 0) + 1;
-  });
-
-  const filledWeeks = Object.keys(byWeek).sort();
-  if (filledWeeks.length === 0) return;
-
-  // Fill in all weeks (including zeros) between first and last
-  const allWeeks = [];
-  const cur = new Date(filledWeeks[0] + 'T12:00:00');
-  const last = new Date(filledWeeks[filledWeeks.length - 1] + 'T12:00:00');
-  while (cur <= last) {
-    allWeeks.push(cur.toISOString().slice(0,10));
-    cur.setDate(cur.getDate() + 7);
-  }
-  const weeks = allWeeks;
-
-  // Format labels: "Apr 14"
-  const labels = weeks.map(w => {
-    const d = new Date(w + 'T12:00:00');
-    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
-  });
+  const quarters = Object.keys(byQ).sort();
+  if (quarters.length === 0) return;
 
   const ctx = document.getElementById('chart-ph4-entry').getContext('2d');
   if (ph4EntryChart) ph4EntryChart.destroy();
   ph4EntryChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels,
-      datasets: [{
-        label: 'Tickets entering Dev Ready (Ph4)',
-        data: weeks.map(w => byWeek[w] || 0),
-        backgroundColor: '#e3702a99',
-        borderColor: '#e3702a',
-        borderWidth: 2,
-        borderRadius: 4,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: '#8b949e', font: { size: 11 } } },
-        tooltip: { callbacks: { label: c => ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} entered Dev Ready` } }
-      },
-      scales: {
-        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 11 }, maxRotation: 45 } },
-        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
-             beginAtZero: true, title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } } }
-      }
-    }
-  });
-}
-
-// ── Quarterly Ph4 Intake QoQ Chart ────────────────────────────────────────
-let ph4QoQChart = null;
-
-function buildPh4QoQChart() {
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
-  const PH4 = 'Phase 4: Ready for Development';
-  const ph4PlusPhases = new Set([PH4, 'Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability']);
-
-  const byQtr = {};
-  tickets.forEach(t => {
-    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4]||0) > 0);
-    if (!hasPh4) return;
-    const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
-    if (!dateStr) return;
-    const q = quarterLabel(dateStr);
-    byQtr[q] = (byQtr[q] || 0) + 1;
-  });
-
-  const quarters = Object.keys(byQtr).sort();
-  if (quarters.length === 0) return;
-
-  const ctx = document.getElementById('chart-ph4-qoq').getContext('2d');
-  if (ph4QoQChart) ph4QoQChart.destroy();
-  ph4QoQChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
       labels: quarters,
       datasets: [{
-        label: 'Tickets entering Dev Ready (Ph4)',
-        data: quarters.map(q => byQtr[q]),
+        label: 'Tickets entering Dev Ready',
+        data: quarters.map(q => byQ[q] || 0),
         backgroundColor: '#e3702a99',
         borderColor: '#e3702a',
         borderWidth: 2,
@@ -1444,18 +1440,29 @@ function buildPh4QoQChart() {
       responsive: true,
       plugins: {
         legend: { labels: { color: '#8b949e', font: { size: 11 } } },
-        tooltip: { callbacks: { label: c => ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} entered Dev Ready` } }
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} entered Ph4: Dev Ready`,
+          }
+        }
       },
       scales: {
-        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 11 } } },
-        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
-             beginAtZero: true, title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } } }
+        x: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#e6edf3', font: { size: 12, weight: '600' } }
+        },
+        y: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
+          beginAtZero: true,
+          title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } }
+        }
       }
     }
   });
 }
 
-// ── All-Time Phase Completion Chart ────────────────────────────────────────
+// &#9472;&#9472; All-Time Phase Completion Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 let allTimeChart = null;
 
 function buildAllTimeChart() {
@@ -1619,47 +1626,184 @@ function buildWipChart() {
   });
 }
 
-// buildGateTimeChart removed
+// &#9472;&#9472; Phase Gate Time Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let gateTimeChart = null;
+function buildGateTimeChart() {
+  const PHASE_ORDER = [
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+  ];
+  const PHASE_LABELS = [
+    'Ph 1: Alignment',
+    'Ph 2: Build',
+    'Ph 3: Testing',
+    'Ph 4: Dev Ready',
+    'Ph 5: AIA',
+    'Ph 6: AP',
+    'Ph 7: Beta &#10003;',
+  ];
+  const tickets = RAW.filter(i => i.k && i.k.startsWith('PROMPT'));
 
+  // For each phase, compute the avg cumulative days from creation to reaching it
+  // "reached phase N" means the ticket has spent time in phases 0..N or is in phase N or beyond
+  const avgGateTimes = PHASE_ORDER.map((ph, idx) => {
+    // Ticket "reached" this phase if: it spent time here, is currently here, or is past here
+    const reached = tickets.filter(t => {
+      if ((t.p[ph] || 0) > 0) return true; // spent time in this phase
+      if (t.c === ph) return true;           // currently in this phase
+      if (t.c === 'General Availability') return true; // completed
+      const curIdx = PHASE_ORDER.indexOf(t.c);
+      return curIdx > idx;                   // currently past this phase
+    });
+    if (!reached.length) return null;
+    // Cumulative bd from creation to entering this phase =
+    //   p['Not Started'] + p[Phase 1] + ... + p[Phase idx-1]
+    const vals = reached.map(t => {
+      let cum = t.p['Not Started'] || 0;
+      for (let j = 0; j < idx; j++) cum += (t.p[PHASE_ORDER[j]] || 0);
+      return cum;
+    });
+    return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length * 10) / 10;
+  });
+
+  const ctx = document.getElementById('chart-gate-time').getContext('2d');
+  if (gateTimeChart) gateTimeChart.destroy();
+  const colors = ['#58a6ff','#3fb950','#f0883e','#e3b341','#bc8cff','#ff7b72','#39d353'];
+  gateTimeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: PHASE_LABELS,
+      datasets: [{
+        label: 'Avg bd from creation to reach phase',
+        data: avgGateTimes,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c + 'cc'),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => c.parsed.x != null ? ` ${c.parsed.x} bd avg from creation` : ' No data yet',
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#8b949e', font: { size: 11 } },
+          beginAtZero: true,
+          title: { display: true, text: 'Business days from ticket creation', color: '#8b949e', font: { size: 11 } }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e6edf3', font: { size: 12 } } }
+      }
+    }
+  });
+}
 
 // &#9472;&#9472; Velocity Story Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 let velocityChart = null;
-function buildVelocityChart(snapsArg, key) {
-  const snaps = snapsArg || loadSnapshots();
-  const snapsKey = key || 'new-workflow';
+function buildVelocityChart() {
+  const PH4 = 'Phase 4: Ready for Development';
+  const PRE_PH4_ACTIVE = [
+    'Not Started',
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+  ];
+  const BLOCKED_STATUSES = ['Blocked','Waiting For Customer / 3rd Party','Waiting For Additional Info','Waiting/Blocked'];
 
-  // Part 1: completions per quarter (Beta/GA tickets by lt date)
+  // &#9472;&#9472; Part 1a: Ph4 handoffs per quarter &#8212; Agent Solutions' output metric
+  // A ticket counts in the quarter it FIRST entered Phase 4: Ready for Development
+  const PH4_VEL = 'Phase 4: Ready for Development';
+  const handoffsByQ = {};
+  RAW.filter(i => i.k && i.k.startsWith('PROMPT')).forEach(t => {
+    const hasPh4 = (t.p[PH4_VEL]||0) > 0 || t.c === PH4_VEL ||
+      WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4_VEL);
+    if (!hasPh4) return;
+    const dateStr = (t.pe && t.pe[PH4_VEL]) ? t.pe[PH4_VEL] : (t.lt || t.cr);
+    const q = quarterLabel(dateStr);
+    handoffsByQ[q] = (handoffsByQ[q] || 0) + 1;
+  });
+
+  // &#9472;&#9472; Part 1b: Beta/GA shipped per quarter &#8212; engineering output (may lag by 1-2 quarters)
   const COMPLETED = new Set(['Phase 7: Beta', 'General Availability']);
-  const completed = RAW.filter(i => i.k && i.k.startsWith('PROMPT') && COMPLETED.has(i.c));
   const completionsByQ = {};
-  completed.forEach(t => {
+  RAW.filter(i => i.k && i.k.startsWith('PROMPT') && COMPLETED.has(i.c)).forEach(t => {
     const q = quarterLabel(t.lt || t.cr);
     completionsByQ[q] = (completionsByQ[q] || 0) + 1;
   });
 
-  // Part 2: avg flow time per quarter from snapshots — latest snap per quarter
-  // Two series: active only (flowTime) and calendar incl. blocked (totalFlowTime)
-  const activeByQ = {}, calendarByQ = {};
-  snaps.forEach(snap => {
+  // &#9472;&#9472; Part 2: avg active flow time at end of each quarter from snapshots
+  const flowByQ = {};
+  HISTORICAL_SNAPSHOTS.forEach(snap => {
     const q = quarterLabel(snap.date);
-    const sd = snap[snapsKey] || snap.all;
-    if (sd?.flowTime != null) activeByQ[q] = sd.flowTime;
-    if (sd?.totalFlowTime != null) calendarByQ[q] = sd.totalFlowTime;
+    const ft = (snap['new-workflow'] || snap.all)?.flowTime;
+    if (ft != null) flowByQ[q] = ft;
   });
 
+  // &#9472;&#9472; Part 3: avg time to reach Ph4 &#8212; with and without blocked time
+  // For each PROMPT ticket that has reached Ph4, compute cumulative time from creation to Ph4 entry.
+  // Quarter = quarter the ticket first entered Ph4 (pe['Phase 4'] if available, else lt as proxy)
+  const ph4WithByQ = {}, ph4WithoutByQ = {};
+  const ph4WithCountByQ = {}, ph4WithoutCountByQ = {};
+
+  RAW.filter(i => i.k && i.k.startsWith('PROMPT')).forEach(t => {
+    // Has the ticket reached Ph4?
+    const hasPh4 = (t.p[PH4] || 0) > 0 || t.c === PH4 ||
+      WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4);
+    if (!hasPh4) return;
+
+    // Quarter this ticket entered Ph4
+    const ph4EntryDate = (t.pe && t.pe[PH4]) ? t.pe[PH4] : (t.lt || t.cr);
+    const q = quarterLabel(ph4EntryDate);
+    if (!q) return;
+
+    // Time to reach Ph4 WITHOUT blocked = sum of active pre-Ph4 phases only
+    const withoutBlocked = PRE_PH4_ACTIVE.reduce((s, ph) => s + (t.p[ph] || 0), 0);
+    // Time to reach Ph4 WITH blocked = above + all blocked/waiting time
+    const blockedTime = BLOCKED_STATUSES.reduce((s, ph) => s + (t.p[ph] || 0), 0);
+    const withBlocked = withoutBlocked + blockedTime;
+
+    if (!ph4WithoutByQ[q]) { ph4WithoutByQ[q] = 0; ph4WithoutCountByQ[q] = 0; }
+    if (!ph4WithByQ[q])    { ph4WithByQ[q]    = 0; ph4WithCountByQ[q]    = 0; }
+    ph4WithoutByQ[q] += withoutBlocked; ph4WithoutCountByQ[q]++;
+    ph4WithByQ[q]    += withBlocked;    ph4WithCountByQ[q]++;
+  });
+
+  // Compute averages per quarter
+  const ph4WithAvgByQ    = Object.fromEntries(Object.keys(ph4WithByQ).map(q => [q, Math.round(ph4WithByQ[q]    / ph4WithCountByQ[q]    * 10) / 10]));
+  const ph4WithoutAvgByQ = Object.fromEntries(Object.keys(ph4WithoutByQ).map(q => [q, Math.round(ph4WithoutByQ[q] / ph4WithoutCountByQ[q] * 10) / 10]));
+
+  // &#9472;&#9472; Union of all quarters, sorted
+  const allQSet = new Set([
+    ...Object.keys(handoffsByQ),
+    ...Object.keys(completionsByQ),
+    ...Object.keys(flowByQ),
+    ...Object.keys(ph4WithAvgByQ),
+    ...Object.keys(ph4WithoutAvgByQ),
+  ]);
   function qSortKey(q) {
     const m = q.match(/Q(\d) (\d{4})/);
     return m ? parseInt(m[2]) * 10 + parseInt(m[1]) : 0;
   }
-  const allQ = [...new Set([
-    ...Object.keys(completionsByQ),
-    ...Object.keys(activeByQ),
-    ...Object.keys(calendarByQ),
-  ])].sort((a,b) => qSortKey(a) - qSortKey(b));
+  const allQ = [...allQSet].sort((a, b) => qSortKey(a) - qSortKey(b));
 
-  const completionData = allQ.map(q => completionsByQ[q] || 0);
-  const activeData = allQ.map(q => activeByQ[q] ?? null);
-  const calendarData = allQ.map(q => calendarByQ[q] ?? null);
+  const handoffData       = allQ.map(q => handoffsByQ[q] || 0);
+  const completionData    = allQ.map(q => completionsByQ[q] || 0);
+  const flowData          = allQ.map(q => flowByQ[q] ?? null);
+  const ph4WithData       = allQ.map(q => ph4WithAvgByQ[q] ?? null);
+  const ph4WithoutData    = allQ.map(q => ph4WithoutAvgByQ[q] ?? null);
 
   const ctx = document.getElementById('chart-velocity').getContext('2d');
   if (velocityChart) velocityChart.destroy();
@@ -1669,20 +1813,31 @@ function buildVelocityChart(snapsArg, key) {
       datasets: [
         {
           type: 'bar',
-          label: 'Completions (Beta/GA)',
-          data: completionData,
-          backgroundColor: 'rgba(63,185,80,0.7)',
+          label: 'Ph4 handoffs (Agent Solutions done)',
+          data: handoffData,
+          backgroundColor: 'rgba(63,185,80,0.85)',
           borderColor: '#3fb950',
           borderWidth: 1,
           borderRadius: 4,
           yAxisID: 'y',
+          order: 2,
+        },
+        {
+          type: 'bar',
+          label: 'Shipped (Beta/GA) &#8212; may lag 1-2 quarters',
+          data: completionData,
+          backgroundColor: 'rgba(63,185,80,0.25)',
+          borderColor: 'rgba(63,185,80,0.6)',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+          order: 1,
         },
         {
           type: 'line',
-          label: 'Calendar time Ph1&#8594;Ph5 (incl. blocked/waiting)',
-          data: calendarData,
+          label: 'Avg active flow time (bd)',
+          data: flowData,
           borderColor: '#58a6ff',
-          backgroundColor: 'rgba(88,166,255,0.08)',
           borderWidth: 2,
           pointRadius: 4,
           pointHoverRadius: 6,
@@ -1690,34 +1845,52 @@ function buildVelocityChart(snapsArg, key) {
           fill: false,
           yAxisID: 'y2',
           spanGaps: true,
+          order: 0,
         },
         {
           type: 'line',
-          label: 'Active phase time only (Ph1&#8211;5)',
-          data: activeData,
-          borderColor: '#3fb950',
-          backgroundColor: 'rgba(63,185,80,0.08)',
+          label: 'Avg time to Ph4 &#8212; excl. blocked (bd)',
+          data: ph4WithoutData,
+          borderColor: '#a371f7',
           borderWidth: 2,
-          borderDash: [5,3],
           pointRadius: 4,
           pointHoverRadius: 6,
           tension: 0.3,
           fill: false,
           yAxisID: 'y2',
           spanGaps: true,
-        }
+          order: 0,
+        },
+        {
+          type: 'line',
+          label: 'Avg time to Ph4 &#8212; incl. blocked (bd)',
+          data: ph4WithData,
+          borderColor: '#f85149',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderDash: [5, 4],
+          tension: 0.3,
+          fill: false,
+          yAxisID: 'y2',
+          spanGaps: true,
+          order: 0,
+        },
       ]
     },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 14 } },
+        legend: {
+          labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 14 }
+        },
         tooltip: {
           callbacks: {
             label: c => {
-              if (c.datasetIndex === 0) return ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} completed`;
-              return c.parsed.y != null ? ` ${c.dataset.label}: ${c.parsed.y} bd` : ' No data';
+              if (c.datasetIndex === 0) return ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} handed to eng (Ph4)`;
+              if (c.datasetIndex === 1) return ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} shipped (Beta/GA)`;
+              return c.parsed.y != null ? ` ${c.parsed.y} bd` : ' No data';
             }
           }
         }
@@ -1734,9 +1907,9 @@ function buildVelocityChart(snapsArg, key) {
         y2: {
           type: 'linear', position: 'right',
           grid: { drawOnChartArea: false },
-          ticks: { color: '#58a6ff', font: { size: 11 }, callback: v => v+'d' },
+          ticks: { color: '#8b949e', font: { size: 11 } },
           beginAtZero: true,
-          title: { display: true, text: 'Build time (bd)', color: '#58a6ff', font: { size: 11 } }
+          title: { display: true, text: 'Business days (bd)', color: '#8b949e', font: { size: 11 } }
         }
       }
     }
