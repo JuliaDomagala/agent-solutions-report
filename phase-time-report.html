@@ -835,18 +835,16 @@ const PHASE_COLORS = [
 ];
 
 function computeSnapshot(rows) {
-  // Flow time: avg (Ph1+Ph2+Ph3+Ph4+Ph5) for tickets that have Phase 1 data
+  // Flow time: avg (Ph1+Ph2+Ph3 active time only) for tickets that have Phase 1 data
+  // This matches OKR 6.3: "Reduce time to reach Dev Ready &#8212; Ph1+Ph2+Ph3 only, excl. Ph4, Ph5, blocked & waiting"
   const PH1 = "Phase 1: Alignment & Requirements";
-  const PH5 = "Phase 5: AIA Integration";
   const flowTickets = rows.filter(i => (i.p[PH1]||0) > 0 && !EXCLUDE_FROM_AVG.has(i.af||i.a));
   let flowTime = null;
   if (flowTickets.length > 0) {
     const total = flowTickets.reduce((sum, i) => {
       return sum + (i.p["Phase 1: Alignment & Requirements"]||0)
                  + (i.p["Phase 2: Prompt Build & Internal Validation"]||0)
-                 + (i.p["Phase 3: External Testing"]||0)
-                 + (i.p["Phase 4: Ready for Development"]||0)
-                 + (i.p["Phase 5: AIA Integration"]||0);
+                 + (i.p["Phase 3: External Testing"]||0);
     }, 0);
     flowTime = Math.round(total / flowTickets.length * 10) / 10;
   }
@@ -965,7 +963,7 @@ function renderOKR(snaps) {
   const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
 
   document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '\u2014';
-  document.getElementById('okr-target').textContent = target != null ? '&#8804; ' + target + ' bd' : '\u2014';
+  document.getElementById('okr-target').textContent = target != null ? '\u2264 ' + target + ' bd' : '\u2014';
 
   const el = document.getElementById('okr-current');
   el.textContent = current != null ? current + ' bd' : '\u2014';
@@ -1025,7 +1023,7 @@ function renderTrends(typeFilter) {
     });
   }
   flowDatasets.push({
-    label: 'Active phase time only (Ph1&#8211;5)',
+    label: 'Active phase time only (Ph1&#8211;3)',
     data: activeFlowData,
     borderColor: '#3fb950',
     backgroundColor: 'rgba(63,185,80,0.08)',
