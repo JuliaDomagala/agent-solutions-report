@@ -622,7 +622,10 @@ function computeAverages(rows, quarterFilter) {
   // We achieve this by passing activeRows separately &#8212; for now use rows but ignore quarter for active
   const allExcluded = new Set(EXCLUDE_FROM_AVG);
 
-  rows.filter(i => !allExcluded.has(i.af||i.a)).forEach(issue => {
+  // Iterate ALL tickets for counts (so Julia's DUMMY/PM tickets are counted in the funnel),
+  // but only include non-excluded tickets in average time calculations.
+  rows.forEach(issue => {
+    const isExcludedFromAvg = allExcluded.has(issue.af || issue.a);
     const curWfIdx = WORKFLOW_PHASE_ORDER.indexOf(issue.c);
     PHASE_COLS.forEach(p => {
       const v = issue.p[p] || 0;
@@ -631,22 +634,22 @@ function computeAverages(rows, quarterFilter) {
       const isPassed = isActive ? false :
         (wfIdx >= 0 ? curWfIdx > wfIdx : v > 0);
 
-      // Active now: include regardless of quarter filter
+      // Active now: count all tickets in the phase, avg only non-excluded
       if (isActive) {
         activeCounts[p]++;
-        if (v > 0) activeTotals[p] += v;
+        if (v > 0 && !isExcludedFromAvg) activeTotals[p] += v;
       }
 
-      // Passed through: count ALL tickets that passed through this phase (even if v=0),
-      // but only include v>0 tickets in the average calculation
+      // Passed through: count ALL tickets that passed through (funnel accuracy),
+      // but only include non-excluded tickets in the average time calculation
       if (isPassed) {
         if (quarterFilter) {
           const exitDate = wfIdx >= 0 ? phaseExitDate(issue, wfIdx) : (issue.lt || issue.cr);
           const exitQ = dateToQuarter(exitDate);
           if (exitQ !== quarterFilter) return;
         }
-        passedCounts[p]++; // count regardless of v &#8212; ticket passed through
-        if (v > 0) { passedTotals[p] += v; passedTimedCounts[p]++; } // only timed tickets in avg
+        passedCounts[p]++; // count ALL &#8212; ticket passed through regardless of assignee
+        if (v > 0 && !isExcludedFromAvg) { passedTotals[p] += v; passedTimedCounts[p]++; } // avg: non-excluded only
       }
     });
   });
