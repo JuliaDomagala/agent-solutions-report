@@ -508,14 +508,14 @@ function buildCards(rows) {
 
     const passedRow = a.passedCount > 0 ? `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
-        <div style="font-size:10px;color:var(--text-muted);">${a.passedCount} passed through</div>
+        <div style="font-size:10px;color:var(--text-muted);">final avg &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}</div>
         <div style="font-size:15px;font-weight:700;color:${color};">${a.passedAvg != null ? a.passedAvg + 'bd' : '&#8212;'}</div>
       </div>
       <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${passedPct}%;background:${color};opacity:0.7;"></div></div>` : '';
 
     const activeRow = a.activeCount > 0 ? `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
-        <div style="font-size:10px;color:#e3b341;">${a.activeCount} active now &#8635;</div>
+        <div style="font-size:10px;color:#e3b341;">live avg &#183; ${a.activeCount} ticket${a.activeCount !== 1 ? 's' : ''} &#8635;</div>
         <div style="font-size:15px;font-weight:700;color:#e3b341;">${a.activeAvg != null ? a.activeAvg + 'bd' : '&lt;1bd'}</div>
       </div>
       <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${activePct}%;background:#e3b341;opacity:0.8;"></div></div>` : '';
@@ -525,7 +525,7 @@ function buildCards(rows) {
         <div class="phase-name">${a.phase}</div>
         ${passedRow}
         ${activeRow}
-        <div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">Active refreshed daily &#183; ${a.passedCount + a.activeCount} total tickets</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">Both update as tickets move &#183; refreshed daily</div>
       </div>`;
   });
 }
