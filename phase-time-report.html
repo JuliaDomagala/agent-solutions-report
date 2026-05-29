@@ -177,6 +177,7 @@
   <button class="tab-btn" data-tab="prod">Prod <span class="badge" id="badge-prod"></span></button>
   <button class="tab-btn" data-tab="other">Other <span class="badge" id="badge-other"></span></button>
   <button class="tab-btn" data-tab="trends">&#128200; Trends <span class="badge" id="badge-trends"></span></button>
+  <button class="tab-btn" data-tab="methodology">&#128208; How it's calculated</button>
 </div>
 
 <div class="controls">
@@ -335,6 +336,136 @@
       <canvas id="chart-velocity" style="max-height:320px;"></canvas>
     </div>
   </div>
+</div>
+
+<!-- Methodology Tab -->
+<div id="methodology-section" style="display:none; padding:28px 32px 60px; max-width:900px; margin:0 auto;">
+
+  <h2 style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">How everything is calculated</h2>
+  <p style="color:var(--text-muted);font-size:13px;margin-bottom:32px;">This page explains the exact logic behind every number in the report. All times are in <strong style="color:var(--text);">business days (bd)</strong> &#8212; Monday to Friday only, weekends excluded. Data is pulled from Jira every morning at 8am and the report is republished automatically.</p>
+
+  <!-- FOUNDATIONS -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Foundations</h3>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">Business days</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">Every duration in this report is measured in <strong style="color:var(--text);">business days</strong> &#8212; Monday through Friday only. Weekends are excluded. A ticket that entered Phase 2 on a Friday and moved to Phase 3 the following Monday spent 1 business day in Phase 2.</div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">Fiscal quarters (project44)</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+        project44's fiscal year starts in February. Quarters are:<br>
+        <span style="display:inline-block;margin-top:6px;font-family:monospace;font-size:12px;background:var(--surface2);padding:8px 14px;border-radius:6px;border:1px solid var(--border);">
+          Q1 = Feb &#8211; Apr &nbsp;|&nbsp; Q2 = May &#8211; Jul &nbsp;|&nbsp; Q3 = Aug &#8211; Oct &nbsp;|&nbsp; Q4 = Nov &#8211; Jan
+        </span><br>
+        <span style="margin-top:6px;display:inline-block;">FY27 = 1 Feb 2026 &#8211; 31 Jan 2027. The OKR target quarter Q2 FY27 = May&#8211;Jul 2026.</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">Flow time vs total time</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;"><strong style="color:var(--text);">Active flow time</strong> = time spent actively progressing through Phases 1&#8211;5 only. Blocked and waiting statuses are excluded &#8212; this shows how fast work moves when it's actually moving.<br><br><strong style="color:var(--text);">Total flow time</strong> = active flow time plus any time spent in Blocked or Waiting statuses. This is the end-to-end wall clock from Phase 1 entry to Phase 5 exit.</div>
+    </div>
+
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">How time in a phase is measured</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">Jira records a changelog entry every time a ticket changes status. The report reads the full changelog for each ticket and computes how many business days elapsed between each status transition. If a ticket moves back and forth between phases, all time in each phase is accumulated. Phase time for the <strong style="color:var(--text);">current phase</strong> accumulates until today's date and is refreshed every morning.</div>
+    </div>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Summary cards &#8212; Average days per phase</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:12px;">Each card shows two separate averages for a phase:</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">Final avg &#183; N tickets</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">Tickets that have <strong style="color:var(--text);">already exited</strong> this phase &#8212; their time in the phase is settled. The average updates whenever a ticket transitions out. A ticket that moved through Phase 3 in 5bd will permanently contribute 5bd to this average. Julia Domagala is excluded from averages as she is PM/reporter, not a builder.</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid rgba(227,179,65,0.3);border-radius:8px;padding:16px 20px;">
+      <div style="font-size:12px;font-weight:600;color:#e3b341;margin-bottom:4px;">Live avg &#183; M tickets &#8635;</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">Tickets <strong style="color:var(--text);">currently in</strong> this phase right now. Their time is still accumulating &#8212; the number grows every business day the ticket stays in that phase. Refreshed every morning from Jira. If the live avg is significantly higher than the final avg, tickets are getting stuck in this phase longer than historical ones did &#8212; a bottleneck signal.</div>
+    </div>
+  </div>
+
+  <!-- PHASE GATE TIME -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Phase gate time chart</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Shows the average number of business days from <strong style="color:var(--text);">ticket creation</strong> to <strong style="color:var(--text);">first reaching</strong> each phase. This is a cumulative measure &#8212; it answers "how long before a workflow typically hits this milestone?"<br><br>
+      <strong style="color:var(--text);">Calculation:</strong> For each ticket that reached Phase N, sum the business days spent in all prior phases (Not Started + Phase 1 + Phase 2 + &#8230; + Phase N&#8722;1). Average across all tickets that reached that phase.<br><br>
+      Only PROMPT tickets are included. Only tickets that actually reached the phase are counted in that phase's average &#8212; a ticket that never entered Phase 5 is excluded from the Phase 5 bar.
+    </div>
+  </div>
+
+  <!-- QUARTERLY THROUGHPUT -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Quarterly throughput chart</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Counts PROMPT tickets that <strong style="color:var(--text);">completed</strong> (reached Phase 7: Beta or General Availability) in each quarter.<br><br>
+      <strong style="color:var(--text);">Quarter assignment:</strong> A ticket is counted in the quarter of its <strong style="color:var(--text);">last Jira status transition</strong> &#8212; i.e. when it was moved to Beta or GA. This is the completion date.<br><br>
+      A ticket started in Q1 that completes in Q2 counts as Q2 throughput. This is intentional &#8212; it answers "what did the team ship in Q2?" regardless of when the work started. Each ticket is counted exactly once.
+    </div>
+  </div>
+
+  <!-- PIPELINE INTAKE -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Pipeline intake chart &#8212; tickets entering Dev Ready per quarter</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Counts PROMPT tickets that <strong style="color:var(--text);">first reached Phase 4: Ready for Development</strong> in each quarter. Rising bars mean more builds are being handed to engineering.<br><br>
+      <strong style="color:var(--text);">Quarter assignment:</strong> A ticket is counted in the quarter it <strong style="color:var(--text);">first entered</strong> Phase 4, using the exact date from the Jira changelog (<code style="background:var(--surface2);padding:1px 5px;border-radius:3px;">pe</code> field = phase entry dates). Each ticket counted once regardless of how many times it may have moved in and out of Phase 4.
+    </div>
+  </div>
+
+  <!-- QoQ -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Quarter-over-Quarter chart &#8212; avg days per phase</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Shows how average phase times have changed across quarters, using the <strong style="color:var(--text);">weekly snapshot history</strong>.<br><br>
+      <strong style="color:var(--text);">Calculation:</strong> Every week, a snapshot captures the average business days each active PROMPT ticket has spent in each phase. All snapshots within a quarter are averaged together to produce that quarter's bar. Quarters with more snapshots produce more reliable averages.<br><br>
+      <span style="color:#e3b341;">&#9888; Q1 2026 (Feb&#8211;Apr) was the first batch of workflows &#8212; some were mid-flight when tracking started. Treat Q1 as a baseline, not a fair comparison. Q2 2026 onwards reflects full phase 1&#8594;5 journeys.</span><br><br>
+      The two lines show <strong style="color:var(--text);">active flow time</strong> (Phases 1&#8211;5 only) and <strong style="color:var(--text);">total flow time</strong> (including blocked/waiting time) over the same period.
+    </div>
+  </div>
+
+  <!-- WIP SNAPSHOT -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">WIP snapshot chart &#8212; portfolio state at end of quarter</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Shows how many PROMPT tickets were sitting in each phase at the <strong style="color:var(--text);">end of each quarter</strong>, using the latest weekly snapshot from that quarter.<br><br>
+      This answers "what did the team's in-flight portfolio look like at the close of Q2?" &#8212; useful for seeing whether work is piling up in any particular phase over time. Data starts from Q2 2026 when weekly snapshots began.
+    </div>
+  </div>
+
+  <!-- VELOCITY STORY -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Velocity story chart</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      Two signals on one chart to tell the velocity story:<br><br>
+      <strong style="color:#3fb950;">Green bars (left axis) &#8212; Completions per quarter:</strong> Count of PROMPT tickets that reached Beta or GA, assigned to the quarter of their completion date. Same logic as the Throughput chart.<br><br>
+      <strong style="color:#58a6ff;">Blue line (right axis) &#8212; Avg active flow time:</strong> The active flow time reading from the <strong style="color:var(--text);">latest weekly snapshot</strong> within each quarter. This reflects the speed of work in motion at the end of that period.<br><br>
+      The goal: <strong style="color:var(--text);">bars rising, line falling</strong> &#8212; more completions AND faster delivery. If the line is rising while bars are flat, the team is getting slower without shipping more.
+    </div>
+  </div>
+
+  <!-- ALL-TIME PHASE COMPLETION -->
+  <div style="margin-bottom:36px;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">All-time programme chart &#8212; tickets by current phase</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      A simple snapshot of where every PROMPT ticket currently sits across the full build pipeline. Each ticket appears exactly once in its current Jira status. Updated every morning. This is not a trend &#8212; it's a live view of the whole portfolio's shape today.
+    </div>
+  </div>
+
+  <!-- DATA SOURCE -->
+  <div style="margin-bottom:0;">
+    <h3 style="font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Data source &amp; refresh</h3>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+      All data comes from <strong style="color:var(--text);">Jira filter #28132</strong> via the Jira REST API, including full changelog history for every ticket. A scheduled task runs every morning at 8am, fetches the latest data, recomputes all phase times, and publishes the updated report to GitHub Pages and Confluence automatically.<br><br>
+      The <strong style="color:var(--text);">REPORT_DATE</strong> shown at the top of the report reflects when the Jira data was last computed &#8212; not the date the report is being viewed.
+    </div>
+  </div>
+
 </div>
 
 <!-- Legend + Table -->
@@ -1640,13 +1771,15 @@ document.getElementById('tabs').addEventListener('click', e => {
   activeTab = btn.getAttribute('data-tab');
 
   const isTrends = activeTab === 'trends';
+  const isMethodology = activeTab === 'methodology';
   document.getElementById('trends-section').classList.toggle('visible', isTrends);
-  document.querySelector('.controls').style.display = isTrends ? 'none' : '';
-  document.querySelector('.summary-section').style.display = isTrends ? 'none' : '';
-  document.querySelector('.table-section').style.display = isTrends ? 'none' : '';
+  document.getElementById('methodology-section').style.display = isMethodology ? 'block' : 'none';
+  document.querySelector('.controls').style.display = (isTrends || isMethodology) ? 'none' : '';
+  document.querySelector('.summary-section').style.display = (isTrends || isMethodology) ? 'none' : '';
+  document.querySelector('.table-section').style.display = (isTrends || isMethodology) ? 'none' : '';
 
   if (isTrends) renderTrends(document.getElementById('trends-filter-type').value);
-  else {
+  else if (!isMethodology) {
     document.getElementById('filter-project').value = '';
     applyFilters();
   }
