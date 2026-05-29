@@ -589,29 +589,60 @@ const WORKFLOW_PHASE_ORDER = [
   'General Availability',
 ];
 
+// Return the quarter label for a date string (same logic as quarterLabel())
+function dateToQuarter(dateStr) {
+  if (!dateStr) return null;
+  return quarterLabel(dateStr);
+}
+
+// Get the date a ticket exited a given workflow phase index
+// Uses pe[nextPhase] when available (accurate), falls back to lt (proxy)
+function phaseExitDate(ticket, wfIdx) {
+  const nextPhase = WORKFLOW_PHASE_ORDER[wfIdx + 1];
+  if (nextPhase && ticket.pe && ticket.pe[nextPhase]) return ticket.pe[nextPhase];
+  // Fallback: use last transition date as proxy
+  return ticket.lt || ticket.cr;
+}
+
 // Compute phase averages &#8212; split into passed-through (final) and active (live, refreshed daily)
-function computeAverages(rows) {
+// quarterFilter: if set, "final avg" only counts tickets that exited the phase in that quarter.
+//                "active now" ALWAYS ignores quarterFilter &#8212; shows current state regardless of start date.
+function computeAverages(rows, quarterFilter) {
   const passedTotals = {}, passedCounts = {};
   const activeTotals = {}, activeCounts = {};
   PHASE_COLS.forEach(p => {
     passedTotals[p] = 0; passedCounts[p] = 0;
     activeTotals[p] = 0; activeCounts[p] = 0;
   });
-  rows.filter(i => !EXCLUDE_FROM_AVG.has(i.af||i.a)).forEach(issue => {
+
+  // For "active now": always use ALL RAW tickets (ignore the filtered rows passed in),
+  // but still apply non-quarter filters (assignee, project, status, etc.)
+  // We achieve this by passing activeRows separately &#8212; for now use rows but ignore quarter for active
+  const allExcluded = new Set(EXCLUDE_FROM_AVG);
+
+  rows.filter(i => !allExcluded.has(i.af||i.a)).forEach(issue => {
     const curWfIdx = WORKFLOW_PHASE_ORDER.indexOf(issue.c);
     PHASE_COLS.forEach(p => {
       const v = issue.p[p] || 0;
       const wfIdx = WORKFLOW_PHASE_ORDER.indexOf(p);
       const isActive = issue.c === p;
-      // Passed through = was in this workflow phase and is now in a later one, OR
-      // for non-workflow phases (Blocked etc.): has v > 0 and is no longer in that status
       const isPassed = isActive ? false :
         (wfIdx >= 0 ? curWfIdx > wfIdx : v > 0);
+
+      // Active now: include regardless of quarter filter
       if (isActive) {
         activeCounts[p]++;
         if (v > 0) activeTotals[p] += v;
       }
+
+      // Passed through: apply quarter filter using exit date
       if (isPassed && v > 0) {
+        if (quarterFilter) {
+          // Determine when this ticket exited this phase
+          const exitDate = wfIdx >= 0 ? phaseExitDate(issue, wfIdx) : (issue.lt || issue.cr);
+          const exitQ = dateToQuarter(exitDate);
+          if (exitQ !== quarterFilter) return; // skip &#8212; exited in a different quarter
+        }
         passedCounts[p]++;
         passedTotals[p] += v;
       }
@@ -619,8 +650,8 @@ function computeAverages(rows) {
   });
   return PHASE_COLS.map(p => ({
     phase: p,
-    passedAvg:  passedCounts[p]  > 0 ? Math.round(passedTotals[p]  / passedCounts[p]  * 10) / 10 : null,
-    activeAvg:  activeCounts[p]  > 0 ? Math.round(activeTotals[p]  / activeCounts[p]  * 10) / 10 : null,
+    passedAvg:  passedCounts[p] > 0 ? Math.round(passedTotals[p] / passedCounts[p] * 10) / 10 : null,
+    activeAvg:  activeCounts[p] > 0 ? Math.round(activeTotals[p] / activeCounts[p] * 10) / 10 : null,
     passedCount: passedCounts[p],
     activeCount: activeCounts[p],
   }));
@@ -628,21 +659,40 @@ function computeAverages(rows) {
 
 // Build summary cards
 function buildCards(rows) {
-  const avgs = computeAverages(rows);
+  const quarterFilter = document.getElementById('filter-quarter')?.value || '';
+  // Check if pe (phase entry dates) are available in the data &#8212; improves quarter accuracy
+  const hasPe = RAW.some(i => i.pe && Object.keys(i.pe).length > 1);
+  const avgs = computeAverages(rows, quarterFilter);
   const maxAvg = Math.max(...avgs.map(a => Math.max(a.passedAvg||0, a.activeAvg||0)), 1);
   const container = document.getElementById('phase-cards');
   container.innerHTML = '';
+
+  // Banner when quarter is selected &#8212; explain what the filter does
+  if (quarterFilter) {
+    const peWarning = !hasPe
+      ? ` <span style="color:#e3b341;">&#9888; Phase exit dates not yet available &#8212; quarters approximated by last transition. Improves from tomorrow's refresh.</span>` : '';
+    container.insertAdjacentHTML('beforeend', `
+      <div style="grid-column:1/-1;background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:8px;padding:10px 16px;font-size:12px;color:var(--text-muted);margin-bottom:4px;">
+        <strong style="color:var(--accent);">Quarter filter: ${quarterFilter}</strong> &#8212; <em>Final avg</em> shows only tickets that exited each phase in ${quarterFilter}. <em>Active now &#8635;</em> always shows the current live state regardless of start date.${peWarning}
+      </div>`);
+  }
+
   avgs.filter(a => a.passedCount + a.activeCount > 0).forEach(a => {
     const color = CARD_COLORS[a.phase] || '#8b949e';
     const passedPct = Math.round(((a.passedAvg||0) / maxAvg) * 100);
     const activePct = Math.round(((a.activeAvg||0) / maxAvg) * 100);
 
+    const passedLabel = quarterFilter
+      ? `final avg in ${quarterFilter} &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`
+      : `final avg &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}`;
+
     const passedRow = a.passedCount > 0 ? `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
-        <div style="font-size:10px;color:var(--text-muted);">final avg &#183; ${a.passedCount} ticket${a.passedCount !== 1 ? 's' : ''}</div>
+        <div style="font-size:10px;color:var(--text-muted);">${passedLabel}</div>
         <div style="font-size:15px;font-weight:700;color:${color};">${a.passedAvg != null ? a.passedAvg + 'bd' : '&#8212;'}</div>
       </div>
-      <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${passedPct}%;background:${color};opacity:0.7;"></div></div>` : '';
+      <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${passedPct}%;background:${color};opacity:0.7;"></div></div>`
+      : (quarterFilter ? `<div style="font-size:10px;color:var(--text-muted);margin-top:10px;font-style:italic;">No tickets exited this phase in ${quarterFilter}</div>` : '');
 
     const activeRow = a.activeCount > 0 ? `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
