@@ -1321,7 +1321,11 @@ function buildThroughputChart() {
     if (i.c === PH4) return true;
     const curIdx = WORKFLOW_PHASE_ORDER.indexOf(i.c);
     const ph4Idx = WORKFLOW_PHASE_ORDER.indexOf(PH4);
-    return curIdx > ph4Idx;
+    if (curIdx > ph4Idx) return true;
+    // Also include tickets that have spent time in any phase beyond Ph4
+    // (e.g. now Blocked but previously reached Ph5/Ph6/Ph7)
+    const beyondPh4 = ['Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability'];
+    return beyondPh4.some(ph => (i.p[ph] || 0) > 0);
   });
 
   // Quarter = when the ticket first entered Ph4
