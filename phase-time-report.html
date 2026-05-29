@@ -722,6 +722,9 @@ let sortCol = 'total', sortDir = -1;
 // Assignees who are reporters/PMs, not builders &#8212; excluded from phase averages
 const EXCLUDE_FROM_AVG = new Set(["Julia Domagala","Julia"]);
 
+// Helper: exclude DUMMY and TEST tickets from all chart calculations
+const isRealTicket = i => !/\b(dummy|test)\b/i.test(i.s || '');
+
 const TABLE_BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","In Review","Open","In Progress"]);
 
 // Build table
@@ -859,7 +862,7 @@ function computeSnapshot(rows) {
   });
   // Status counts &#8212; how many PROMPT tickets are in each phase right now
   // Used by WIP snapshot chart to track portfolio state over time
-  const promptRows = rows.filter(i => i.k && i.k.startsWith('PROMPT'));
+  const promptRows = rows.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i));
   const statusCounts = {};
   promptRows.forEach(i => {
     const s = i.c || 'Not Started';
@@ -1312,7 +1315,7 @@ function buildThroughputChart() {
   // Stacked by where the ticket sits TODAY &#8212; shows that Q2 handoffs may still be in eng pipeline
   const PH4 = 'Phase 4: Ready for Development';
   const tickets = RAW.filter(i => {
-    if (!i.k.startsWith('PROMPT')) return false;
+    if (!NEW_WF_KEYS.has(i.k) || !isRealTicket(i)) return false;
     // Has reached Ph4: either spent time there, currently there, or is in a later phase
     if ((i.p[PH4] || 0) > 0) return true;
     if (i.c === PH4) return true;
@@ -1395,7 +1398,7 @@ function buildThroughputChart() {
 let ph4EntryChart = null;
 
 function buildPh4EntryChart() {
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+  const tickets = RAW.filter(i => NEW_WF_KEYS.has(i.k) && isRealTicket(i));
   const PH4 = 'Phase 4: Ready for Development';
 
   // Tickets that have reached Ph4 or beyond
@@ -1467,7 +1470,7 @@ function buildPh4EntryChart() {
 let allTimeChart = null;
 
 function buildAllTimeChart() {
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+  const tickets = RAW.filter(i => NEW_WF_KEYS.has(i.k) && isRealTicket(i));
 
   // Count by current phase
   const byPhase = {};
@@ -1646,9 +1649,9 @@ function buildGateTimeChart() {
     'Ph 4: Dev Ready',
     'Ph 5: AIA',
     'Ph 6: AP',
-    'Ph 7: Beta &#10003;',
+    'Ph 7: Beta ✓',
   ];
-  const tickets = RAW.filter(i => i.k && i.k.startsWith('PROMPT'));
+  const tickets = RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i));
 
   // For each phase, compute the avg cumulative days from creation to reaching it
   // "reached phase N" means the ticket has spent time in phases 0..N or is in phase N or beyond
@@ -1728,7 +1731,7 @@ function buildVelocityChart() {
   // A ticket counts in the quarter it FIRST entered Phase 4: Ready for Development
   const PH4_VEL = 'Phase 4: Ready for Development';
   const handoffsByQ = {};
-  RAW.filter(i => i.k && i.k.startsWith('PROMPT')).forEach(t => {
+  RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i)).forEach(t => {
     const hasPh4 = (t.p[PH4_VEL]||0) > 0 || t.c === PH4_VEL ||
       WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4_VEL);
     if (!hasPh4) return;
@@ -1740,7 +1743,7 @@ function buildVelocityChart() {
   // &#9472;&#9472; Part 1b: Beta/GA shipped per quarter &#8212; engineering output (may lag by 1-2 quarters)
   const COMPLETED = new Set(['Phase 7: Beta', 'General Availability']);
   const completionsByQ = {};
-  RAW.filter(i => i.k && i.k.startsWith('PROMPT') && COMPLETED.has(i.c)).forEach(t => {
+  RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i) && COMPLETED.has(i.c)).forEach(t => {
     const q = quarterLabel(t.lt || t.cr);
     completionsByQ[q] = (completionsByQ[q] || 0) + 1;
   });
@@ -1759,7 +1762,7 @@ function buildVelocityChart() {
   const ph4WithByQ = {}, ph4WithoutByQ = {};
   const ph4WithCountByQ = {}, ph4WithoutCountByQ = {};
 
-  RAW.filter(i => i.k && i.k.startsWith('PROMPT')).forEach(t => {
+  RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i)).forEach(t => {
     // Has the ticket reached Ph4?
     const hasPh4 = (t.p[PH4] || 0) > 0 || t.c === PH4 ||
       WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4);
@@ -1982,6 +1985,7 @@ function applyFilters() {
 
   const spFilter = document.getElementById('filter-sp')?.value || '';
   currentRows = tabFilteredBase().filter(issue => {
+    if (!isRealTicket(issue)) return false;
     if (assignee && (issue.af || issue.a) !== assignee) return false;
     if (project && !issue.k.startsWith(project + '-')) return false;
     if (status && issue.c !== status) return false;
