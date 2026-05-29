@@ -458,32 +458,38 @@ const WORKFLOW_PHASE_ORDER = [
   'General Availability',
 ];
 
-// Compute phase averages
-// passedCount = tickets that moved through this phase (now in a later phase) &#8212; time is final
-// activeCount = tickets currently IN this phase &#8212; time is still accumulating, refreshed daily
-// Avg includes both groups (p[phase] for active tickets is live from the daily Jira refresh)
+// Compute phase averages &#8212; split into passed-through (final) and active (live, refreshed daily)
 function computeAverages(rows) {
-  const totals = {}, avgCounts = {}, passedCounts = {}, activeCounts = {};
-  PHASE_COLS.forEach(p => { totals[p] = 0; avgCounts[p] = 0; passedCounts[p] = 0; activeCounts[p] = 0; });
+  const passedTotals = {}, passedCounts = {};
+  const activeTotals = {}, activeCounts = {};
+  PHASE_COLS.forEach(p => {
+    passedTotals[p] = 0; passedCounts[p] = 0;
+    activeTotals[p] = 0; activeCounts[p] = 0;
+  });
   rows.filter(i => !EXCLUDE_FROM_AVG.has(i.af||i.a)).forEach(issue => {
     const curWfIdx = WORKFLOW_PHASE_ORDER.indexOf(issue.c);
     PHASE_COLS.forEach(p => {
       const v = issue.p[p] || 0;
       const wfIdx = WORKFLOW_PHASE_ORDER.indexOf(p);
       const isActive = issue.c === p;
-      // Passed through = was in this phase AND is now in a later workflow phase
-      const isPassed = (wfIdx >= 0 && curWfIdx > wfIdx) ||
-                       (wfIdx < 0 && v > 0 && !isActive); // non-wf phases (Blocked etc.)
-      if (isActive) activeCounts[p]++;
-      if (isPassed) passedCounts[p]++;
-      // Include in average: active tickets with accumulated time, or passed-through tickets
-      if (v > 0) { totals[p] += v; avgCounts[p]++; }
-      // Active tickets with 0 time (just entered today) &#8212; count them but not in avg yet
+      // Passed through = was in this workflow phase and is now in a later one, OR
+      // for non-workflow phases (Blocked etc.): has v > 0 and is no longer in that status
+      const isPassed = isActive ? false :
+        (wfIdx >= 0 ? curWfIdx > wfIdx : v > 0);
+      if (isActive) {
+        activeCounts[p]++;
+        if (v > 0) activeTotals[p] += v;
+      }
+      if (isPassed && v > 0) {
+        passedCounts[p]++;
+        passedTotals[p] += v;
+      }
     });
   });
   return PHASE_COLS.map(p => ({
     phase: p,
-    avg: avgCounts[p] > 0 ? Math.round(totals[p] / avgCounts[p] * 10) / 10 : 0,
+    passedAvg:  passedCounts[p]  > 0 ? Math.round(passedTotals[p]  / passedCounts[p]  * 10) / 10 : null,
+    activeAvg:  activeCounts[p]  > 0 ? Math.round(activeTotals[p]  / activeCounts[p]  * 10) / 10 : null,
     passedCount: passedCounts[p],
     activeCount: activeCounts[p],
   }));
@@ -492,24 +498,34 @@ function computeAverages(rows) {
 // Build summary cards
 function buildCards(rows) {
   const avgs = computeAverages(rows);
-  const maxAvg = Math.max(...avgs.map(a => a.avg), 1);
+  const maxAvg = Math.max(...avgs.map(a => Math.max(a.passedAvg||0, a.activeAvg||0)), 1);
   const container = document.getElementById('phase-cards');
   container.innerHTML = '';
   avgs.filter(a => a.passedCount + a.activeCount > 0).forEach(a => {
     const color = CARD_COLORS[a.phase] || '#8b949e';
-    const pct = Math.round((a.avg / maxAvg) * 100);
-    // Build the count line: show "N passed &#183; M active &#8635;" as appropriate
-    let countParts = [];
-    if (a.passedCount > 0) countParts.push(`${a.passedCount} done`);
-    if (a.activeCount > 0) countParts.push(`<span style="color:#e3b341;">${a.activeCount} active &#8635;</span>`);
-    const countLine = countParts.join(' &middot; ');
+    const passedPct = Math.round(((a.passedAvg||0) / maxAvg) * 100);
+    const activePct = Math.round(((a.activeAvg||0) / maxAvg) * 100);
+
+    const passedRow = a.passedCount > 0 ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+        <div style="font-size:10px;color:var(--text-muted);">${a.passedCount} passed through</div>
+        <div style="font-size:15px;font-weight:700;color:${color};">${a.passedAvg != null ? a.passedAvg + 'bd' : '&#8212;'}</div>
+      </div>
+      <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${passedPct}%;background:${color};opacity:0.7;"></div></div>` : '';
+
+    const activeRow = a.activeCount > 0 ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+        <div style="font-size:10px;color:#e3b341;">${a.activeCount} active now &#8635;</div>
+        <div style="font-size:15px;font-weight:700;color:#e3b341;">${a.activeAvg != null ? a.activeAvg + 'bd' : '&lt;1bd'}</div>
+      </div>
+      <div class="bar-wrap" style="margin-top:4px;"><div class="bar-fill" style="width:${activePct}%;background:#e3b341;opacity:0.8;"></div></div>` : '';
+
     container.innerHTML += `
       <div class="card">
         <div class="phase-name">${a.phase}</div>
-        <div class="avg-days" style="color:${color}">${a.avg > 0 ? a.avg + 'bd' : '&#8212;'}</div>
-        <div class="avg-label" style="font-size:10px;">avg across ${a.passedCount + a.activeCount} ticket${a.passedCount + a.activeCount !== 1 ? 's' : ''}</div>
-        <div class="avg-label" style="margin-top:3px;">${countLine}</div>
-        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        ${passedRow}
+        ${activeRow}
+        <div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">Active refreshed daily &#183; ${a.passedCount + a.activeCount} total tickets</div>
       </div>`;
   });
 }
