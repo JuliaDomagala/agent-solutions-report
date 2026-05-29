@@ -306,9 +306,14 @@
     </div>
     <div class="chart-card">
       <h3>Weekly Intake &#8212; Tickets Entering Dev Ready (Ph4)</h3>
-      <div class="chart-sub">PROMPT tickets that first reached Ph4 each week &#183; Rising bars = more builds handed to engineering &#183; Uses exact phase entry dates from Jira changelog</div>
+      <div class="chart-sub">PROMPT tickets that first reached Ph4 each week &#183; All weeks shown, including zero weeks &#183; Uses exact phase entry dates from Jira changelog</div>
       <div id="ph4-entry-warning" style="color:#e3b341;font-size:11px;margin-bottom:6px;">&#9888; Phase entry dates not yet available &#8212; using last-transition date as proxy.</div>
       <canvas id="chart-ph4-entry" style="max-height:300px;"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Quarterly Intake &#8212; Tickets Entering Dev Ready (Ph4)</h3>
+      <div class="chart-sub">PROMPT tickets that first reached Ph4 each quarter &#183; Quarter over quarter comparison &#183; Q1=Feb&#8211;Apr &middot; Q2=May&#8211;Jul &middot; Q3=Aug&#8211;Oct &middot; Q4=Nov&#8211;Jan</div>
+      <canvas id="chart-ph4-qoq" style="max-height:300px;"></canvas>
     </div>
     <div class="chart-card">
       <h3>Current Pipeline &#8212; Tickets by Phase</h3>
@@ -1001,6 +1006,9 @@ function renderTrends(typeFilter) {
   // Chart 4: Weekly intake into Ph4
   buildPh4EntryChart();
 
+  // Chart 4b: Quarterly intake into Ph4 (QoQ)
+  buildPh4QoQChart();
+
   // Chart 5: Current pipeline snapshot
   buildAllTimeChart();
 
@@ -1339,8 +1347,18 @@ function buildPh4EntryChart() {
     byWeek[wk] = (byWeek[wk] || 0) + 1;
   });
 
-  const weeks = Object.keys(byWeek).sort();
-  if (weeks.length === 0) return;
+  const filledWeeks = Object.keys(byWeek).sort();
+  if (filledWeeks.length === 0) return;
+
+  // Fill in all weeks (including zeros) between first and last
+  const allWeeks = [];
+  const cur = new Date(filledWeeks[0] + 'T12:00:00');
+  const last = new Date(filledWeeks[filledWeeks.length - 1] + 'T12:00:00');
+  while (cur <= last) {
+    allWeeks.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate() + 7);
+  }
+  const weeks = allWeeks;
 
   // Format labels: "Apr 14"
   const labels = weeks.map(w => {
@@ -1378,7 +1396,58 @@ function buildPh4EntryChart() {
   });
 }
 
-// &#9472;&#9472; All-Time Phase Completion Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+// ── Quarterly Ph4 Intake QoQ Chart ────────────────────────────────────────
+let ph4QoQChart = null;
+
+function buildPh4QoQChart() {
+  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+  const PH4 = 'Phase 4: Ready for Development';
+  const ph4PlusPhases = new Set([PH4, 'Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability']);
+
+  const byQtr = {};
+  tickets.forEach(t => {
+    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4]||0) > 0);
+    if (!hasPh4) return;
+    const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
+    if (!dateStr) return;
+    const q = p44Quarter(dateStr);
+    byQtr[q] = (byQtr[q] || 0) + 1;
+  });
+
+  const quarters = Object.keys(byQtr).sort();
+  if (quarters.length === 0) return;
+
+  const ctx = document.getElementById('chart-ph4-qoq').getContext('2d');
+  if (ph4QoQChart) ph4QoQChart.destroy();
+  ph4QoQChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: quarters,
+      datasets: [{
+        label: 'Tickets entering Dev Ready (Ph4)',
+        data: quarters.map(q => byQtr[q]),
+        backgroundColor: '#e3702a99',
+        borderColor: '#e3702a',
+        borderWidth: 2,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+        tooltip: { callbacks: { label: c => ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} entered Dev Ready` } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
+             beginAtZero: true, title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ── All-Time Phase Completion Chart ────────────────────────────────────────
 let allTimeChart = null;
 
 function buildAllTimeChart() {
