@@ -248,6 +248,40 @@
     <button class="clear-btn" id="clear-snapshots-btn">Clear history</button>
   </div>
   <div id="snapshot-notice" class="snapshot-notice" style="display:none"></div>
+
+  <!-- OKR 6.3 tracker -->
+  <div id="okr-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <span style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.5px;">OKR 6.3</span>
+      <span style="font-size:12px;color:var(--text-muted);">Reduce time to go live by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2027) &#183; Active build time only (excl. blocked &amp; waiting)</span>
+    </div>
+    <div style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Q1 2026 Baseline</div>
+        <div id="okr-baseline" style="font-size:22px;font-weight:700;color:var(--text);">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Target (&#8722;30%)</div>
+        <div id="okr-target" style="font-size:22px;font-weight:700;color:var(--yellow);">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Current (latest week)</div>
+        <div id="okr-current" style="font-size:22px;font-weight:700;">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Reduction achieved</div>
+        <div id="okr-progress" style="font-size:22px;font-weight:700;">&#8212;</div>
+      </div>
+      <div style="border-left:1px solid var(--border);padding-left:32px;flex:1;min-width:180px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Progress to 30% goal</div>
+        <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;">
+          <div id="okr-bar" style="height:100%;background:var(--green);border-radius:4px;width:0%;transition:width 0.5s;"></div>
+        </div>
+        <div id="okr-bar-label" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="trends-empty" class="trends-empty" style="display:none">
     <div class="icon">&#128202;</div>
     <div>Not enough data yet &#8212; trends build up as you open this report daily.</div>
@@ -273,6 +307,16 @@
       <h3>Quarterly Throughput &#8212; Tickets by Phase Reached</h3>
       <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Each ticket counted once in the quarter it last progressed &#183; Stacked by current phase &#183; <strong style="color:var(--green)">Beta slice = shipped that quarter</strong></div>
       <canvas id="chart-throughput" style="max-height:340px;"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Pipeline Intake &#8212; Tickets Entering Dev Ready per Quarter</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counts tickets that reached <strong>Phase 4: Ready for Development</strong> &#183; Grouped by quarter of last progression &#183; Rising bars = more builds handed to engineering</div>
+      <canvas id="chart-ph4-entry" style="max-height:300px;"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>All-Time Programme Completion &#8212; Tickets by Current Phase</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Where each ticket currently sits across the full build &#183; Shows the shape of the entire portfolio</div>
+      <canvas id="chart-alltime" style="max-height:300px;"></canvas>
     </div>
   </div>
 </div>
@@ -308,7 +352,7 @@ const NEW_WF_KEYS = new Set(["PROMPT-5","PROMPT-22","PROMPT-42","PROMPT-40","PRO
 
 let activeTab = 'all';
 
-const RAW = [{"k":"PROMPT-44","s":"Missing Equipment ID - Migration to LP","a":"Paulina","af":"Paulina Gardyan","c":"Blocked","t":10,"p":{"Not Started":3.4,"Phase 1: Alignment & Requirements":0.4,"Phase 2: Prompt Build & Internal Validation":7.4,"Blocked":0.4},"sp":1,"cr":"2026-05-15","lt":"2026-05-29"},{"k":"PROMPT-60","s":"LTL Milestones - Investigate missing webhook responses for P","a":"Daniel","af":"Daniel Merino","c":"Phase 7: Beta","t":2,"p":{"Not Started":2,"Discovery - Engineering":0.1,"Discovery - AP":0.1,"PRD Not Submitted":0.1,"PRD Submitted":0.3,"PRD Triaged":0.3,"PRD Assigned":0.1,"Phase 1: Alignment & Requirements":0.1,"Phase 2: Prompt Build & Internal Validation":0.1,"Phase 3: External Testing":0.1,"Phase 4: Ready for Development":0.3,"Phase 5: AIA Integration":0.4,"Phase 6: AP Integration":0.4,"Phase 7: Beta":0.5},"sp":3,"cr":"2026-05-27","lt":"2026-05-29"},{"k":"PROMPT-57","s":"FTL — Reactivate Dormant Subcontractor Carriers — Email & Ph","a":"Daniel","af":"Daniel Merino","c":"Phase 2: Prompt Build & Internal Validation","t":5,"p":{"Not Started":4.2,"Discovery - Engineering":0.2,"Discovery - AP":0.2,"PRD Not Submitted":0.2,"PRD Submitted":0.2,"PRD Triaged":0.2,"PRD Assigned":0.2,"Phase 1: Alignment & Requirements":0.2,"Phase 2: Prompt Build & Internal Validation":1.4},"sp":1,"cr":"2026-05-22","lt":"2026-05-28"},{"k":"PROMPT-56","s":"LTL — Proactive Outreach for Invalid Customer Credentials","a":"Anurag","af":"Anurag Kalgi","c":"Not Started","t":5,"p":{"Not Started":5.4},"sp":null,"cr":"2026-05-22","lt":"2026-05-22"},{"k":"PROMPT-41","s":"AI AIR Use Case: Confirm ETA for Proof of Delivery & Reason ","a":"Paulina","af":"Paulina Gardyan","c":"Waiting For Customer / 3rd Party","t":14,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":5.6,"Waiting For Customer / 3rd Party":9.4},"sp":2,"cr":"2026-05-11","lt":"2026-05-18"},{"k":"PROMPT-39","s":"Retrieve reason code for dwelling shipment at a Transshipmen","a":"Daniel","af":"Daniel Merino","c":"Phase 6: AP Integration","t":15,"p":{"Not Started":1.9,"Phase 1: Alignment & Requirements":4.8,"Blocked":0.9,"Phase 2: Prompt Build & Internal Validation":5.1,"Phase 3: External Testing":5.1,"Phase 4: Ready for Development":0.1,"Phase 5: AIA Integration":0.1,"Phase 6: AP Integration":1.4},"sp":2,"cr":"2026-05-08","lt":"2026-05-28"},{"k":"PROMPT-49","s":"Update Outbound Connector for Missing and Unknown Equipment ","a":"Anurag","af":"Anurag Kalgi","c":"Waiting For Customer / 3rd Party","t":6,"p":{"Not Started":1.4,"Phase 1: Alignment & Requirements":0.4,"Phase 2: Prompt Build & Internal Validation":2.5,"Waiting For Customer / 3rd Party":3.4},"sp":3,"cr":"2026-05-21","lt":"2026-05-26"},{"k":"PROMPT-62","s":"Lunapath - Knowledge Base Feature Testing & Sign-Off","a":"Daniel","af":"Daniel Merino","c":"Not Started","t":2,"p":{"Not Started":2.4},"sp":2,"cr":"2026-05-27","lt":"2026-05-27"},{"k":"PROMPT-5","s":"FTL DQ - Temperature breach intervention","a":"Mikolaj","af":"Mikolaj Korcala","c":"Blocked","t":51,"p":{"Not Started":0.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":4.7,"Phase 3: External Testing":1.6,"Waiting For Customer / 3rd Party":25.7,"Blocked":21.4},"sp":4,"cr":"2026-03-19","lt":"2026-04-30"},{"k":"PROMPT-61","s":"Invalid Shipment ID Workflow - Investigate incorrect reason ","a":"Bheru","af":"Bheru M","c":"Not Started","t":2,"p":{"Not Started":2.4},"sp":3,"cr":"2026-05-27","lt":"2026-05-27"},{"k":"PROMPT-22","s":"Ocean - Confirm ETA and collect reason code","a":"Bheru","af":"Bheru M","c":"Phase 2: Prompt Build & Internal Validation","t":48,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":20.5,"Phase 2: Prompt Build & Internal Validation":28.9,"Blocked":0.5,"Waiting For Customer / 3rd Party":0.5},"sp":1,"cr":"2026-03-24","lt":"2026-05-27"},{"k":"PROMPT-42","s":"Air D2D - Sourcing FFW Pickup Milestones","a":"Bheru","af":"Bheru M","c":"Phase 2: Prompt Build & Internal Validation","t":14,"p":{"Not Started":1.5,"Phase 1: Alignment & Requirements":0.5,"Phase 2: Prompt Build & Internal Validation":13.4},"sp":1,"cr":"2026-05-11","lt":"2026-05-12"},{"k":"PROMPT-40","s":"Source destination milestones from FFW for Air","a":"Bheru","af":"Bheru M","c":"Phase 4: Ready for Development","t":15,"p":{"Not Started":2.4,"Phase 1: Alignment & Requirements":0.4,"Phase 2: Prompt Build & Internal Validation":3.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":10.4},"sp":2,"cr":"2026-05-08","lt":"2026-05-15"},{"k":"PROMPT-55","s":"FTL — Investigate Idle or Stale Shipment Positions — Carrier","a":"Bheru","af":"Bheru M","c":"Not Started","t":5,"p":{"Not Started":5.4},"sp":null,"cr":"2026-05-22","lt":"2026-05-22"},{"k":"PROMPT-54","s":"FTL — Validate Early ETAs — Carrier & Driver Outreach","a":"Mikolaj","af":"Mikolaj Korcala","c":"Not Started","t":5,"p":{"Not Started":5.4},"sp":null,"cr":"2026-05-22","lt":"2026-05-22"},{"k":"PROMPT-25","s":"LTL: Confirm ETA & Collect Reason Code for Late Shipments","a":"Anurag","af":"Anurag Kalgi","c":"Phase 6: AP Integration","t":47,"p":{"Not Started":0.5,"Phase 1: Alignment & Requirements":4.1,"Phase 2: Prompt Build & Internal Validation":1.1,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":10.6,"Phase 5: AIA Integration":0.6,"Phase 6: AP Integration":34.4},"sp":1,"cr":"2026-03-25","lt":"2026-04-13"},{"k":"PROMPT-20","s":"Push Driveview carriers to ELD ","a":"Paulina","af":"Paulina Gardyan","c":"Phase 5: AIA Integration","t":48,"p":{"Not Started":16.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":0.7,"Phase 3: External Testing":0.7,"Phase 4: Ready for Development":29.5,"Phase 5: AIA Integration":3.4},"sp":2,"cr":"2026-03-24","lt":"2026-05-26"},{"k":"PROMPT-32","s":"FTL Collect missing transfer arrival milestone","a":"Mikolaj","af":"Mikolaj Korcala","c":"Phase 4: Ready for Development","t":33,"p":{"Not Started":1.7,"Phase 1: Alignment & Requirements":2.5,"Phase 2: Prompt Build & Internal Validation":0.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":30.9,"Phase 5: AIA Integration":0.7},"sp":1,"cr":"2026-04-14","lt":"2026-04-17"},{"k":"PROMPT-59","s":"Investigate container location for demurrage prevention - LB","a":"Daniel","af":"Daniel Merino","c":"Not Started","t":4,"p":{"Not Started":4.4},"sp":null,"cr":"2026-05-25","lt":"2026-05-25"},{"k":"PROMPT-58","s":"Investigate container location for demurrage prevention - Tr","a":"Daniel","af":"Daniel Merino","c":"Not Started","t":4,"p":{"Not Started":4.4},"sp":null,"cr":"2026-05-25","lt":"2026-05-25"},{"k":"PROMPT-36","s":"FTL Validate Idling in Risky Zone (Voice — Carrier Dispatch)","a":"Bheru","af":"Bheru M","c":"Phase 4: Ready for Development","t":19,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":0.6,"Phase 2: Prompt Build & Internal Validation":0.6,"Phase 3: External Testing":0.6,"Phase 4: Ready for Development":19.4},"sp":0,"cr":"2026-05-04","lt":"2026-05-04"},{"k":"PROMPT-33","s":"FTL Collect missing transfer departure milestone","a":"Mikolaj","af":"Mikolaj Korcala","c":"Phase 4: Ready for Development","t":32,"p":{"Not Started":1.7,"Phase 1: Alignment & Requirements":1.2,"Phase 2: Prompt Build & Internal Validation":2.2,"Blocked":2.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":28.4},"sp":2,"cr":"2026-04-15","lt":"2026-04-21"},{"k":"PROMPT-31","s":"FTL Collect missing delivery departure milestone","a":"Paulina","af":"Paulina Gardyan","c":"Phase 6: AP Integration","t":33,"p":{"Not Started":1.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":6.6,"Phase 3: External Testing":0.6,"Phase 4: Ready for Development":23.5,"Phase 5: AIA Integration":1.4,"Phase 6: AP Integration":2.4},"sp":1,"cr":"2026-04-14","lt":"2026-05-27"},{"k":"PROMPT-28","s":"FTL Collect missing pickup arrival milestone","a":"Mikolaj","af":"Mikolaj Korcala","c":"Phase 4: Ready for Development","t":33,"p":{"Not Started":6.6,"Blocked":0.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":2.4,"Phase 3: External Testing":0.4,"Phase 4: Ready for Development":25.4},"sp":null,"cr":"2026-04-14","lt":"2026-04-24"},{"k":"PROMPT-48","s":"Confirm missed cut off at POL","a":"Mikolaj","af":"Mikolaj Korcala","c":"Blocked","t":9,"p":{"Not Started":1.5,"Phase 1: Alignment & Requirements":1.7,"Phase 2: Prompt Build & Internal Validation":1.7,"Blocked":6.4},"sp":2,"cr":"2026-05-18","lt":"2026-05-21"},{"k":"PROMPT-29","s":"FTL Collect missing pickup departure milestone","a":"Paulina","af":"Paulina Gardyan","c":"Phase 6: AP Integration","t":33,"p":{"Not Started":1.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":2.6,"Phase 3: External Testing":0.6,"Phase 4: Ready for Development":27.5,"Phase 5: AIA Integration":1.4,"Phase 6: AP Integration":2.4},"sp":1,"cr":"2026-04-14","lt":"2026-05-27"},{"k":"PROMPT-30","s":"FTL Collect missing delivery arrival milestone","a":"Paulina","af":"Paulina Gardyan","c":"Phase 6: AP Integration","t":33,"p":{"Not Started":1.7,"Phase 1: Alignment & Requirements":0.7,"Phase 2: Prompt Build & Internal Validation":4.6,"Phase 3: External Testing":0.6,"Phase 4: Ready for Development":25.5,"Phase 5: AIA Integration":1.4,"Phase 6: AP Integration":2.4},"sp":1,"cr":"2026-04-14","lt":"2026-05-27"},{"k":"PROMPT-51","s":"FTL DQ Inactive Assets - Accept all equipment ID types (all ","a":"Paulina","af":"Paulina Gardyan","c":"Phase 2: Prompt Build & Internal Validation","t":6,"p":{"Not Started":1.5,"Phase 1: Alignment & Requirements":1.6,"Phase 2: Prompt Build & Internal Validation":4.9,"Phase 3: External Testing":1,"Phase 4: Ready for Development":0.5},"sp":3,"cr":"2026-05-21","lt":"2026-05-26"},{"k":"PROMPT-52","s":"FTL DQ Missing Equipment ID - Accept all equipment ID types ","a":"Paulina","af":"Paulina Gardyan","c":"Phase 2: Prompt Build & Internal Validation","t":6,"p":{"Not Started":1.5,"Phase 1: Alignment & Requirements":1.6,"Phase 2: Prompt Build & Internal Validation":4.4},"sp":3,"cr":"2026-05-21","lt":"2026-05-25"},{"k":"PROMPT-24","s":"Investigate container location for demurrage prevention - AP","a":"Daniel","af":"Daniel Merino","c":"Waiting For Customer / 3rd Party","t":48,"p":{"Not Started":21.1,"Phase 1: Alignment & Requirements":1.1,"Phase 2: Prompt Build & Internal Validation":1.1,"Phase 3: External Testing":1.1,"Phase 4: Ready for Development":1.1,"Phase 5: AIA Integration":5.8,"Blocked":16,"Phase 6: AP Integration":1,"Phase 7: Beta":2.8,"Waiting For Customer / 3rd Party":6.4},"sp":2,"cr":"2026-03-24","lt":"2026-05-21"},{"k":"PROMPT-26","s":"Ocean | Vessel Discharge Exception","a":"Daniel","af":"Daniel Merino","c":"Phase 7: Beta","t":46,"p":{"Not Started":8.9,"Phase 3: External Testing":9.5,"Phase 4: Ready for Development":3.5,"Phase 5: AIA Integration":6.6,"Blocked":7.8,"Phase 1: Alignment & Requirements":0.8,"Phase 2: Prompt Build & Internal Validation":0.8,"Phase 6: AP Integration":0.8,"Phase 7: Beta":17.4},"sp":3,"cr":"2026-03-25","lt":"2026-05-18"},{"k":"PROMPT-53","s":"FTL — Proactive Outreach for Shipment Creation Failures","a":"Paulina","af":"Paulina Gardyan","c":"Not Started","t":5,"p":{"Not Started":5.4},"sp":null,"cr":"2026-05-22","lt":"2026-05-22"},{"k":"PROMPT-50","s":"FTL DQ Unknown Equipment ID - Accept all equipment ID types ","a":"Mikolaj","af":"Mikolaj Korcala","c":"Phase 1: Alignment & Requirements","t":6,"p":{"Not Started":1.5,"Phase 1: Alignment & Requirements":5.4},"sp":3,"cr":"2026-05-21","lt":"2026-05-22"},{"k":"PROMPT-23","s":"Ocean | Vessel Arrival Exception","a":"Daniel","af":"Daniel Merino","c":"Waiting For Customer / 3rd Party","t":48,"p":{"Not Started":2.3,"Phase 1: Alignment & Requirements":2.2,"Phase 2: Prompt Build & Internal Validation":7.6,"Phase 3: External Testing":8.4,"Phase 4: Ready for Development":2.1,"Blocked":2.7,"Waiting For Customer / 3rd Party":30.4},"sp":3,"cr":"2026-03-24","lt":"2026-04-17"},{"k":"PROMPT-19","s":"FTL - Route Deviation Voice Agent (DISTANCE & TIME)","a":"Bheru","af":"Bheru M","c":"Waiting For Customer / 3rd Party","t":49,"p":{"Not Started":0.5,"Waiting For Customer / 3rd Party":19.9,"Phase 1: Alignment & Requirements":0.5,"Phase 2: Prompt Build & Internal Validation":0.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":0.5,"Phase 5: AIA Integration":30.6},"sp":null,"cr":"2026-03-23","lt":"2026-05-04"},{"k":"PROMPT-18","s":"Ocean D2D - Sourcing FFW Delivery Milestone","a":"Bheru","af":"Bheru M","c":"Waiting For Customer / 3rd Party","t":49,"p":{"Not Started":0.5,"Waiting For Customer / 3rd Party":14.9,"Phase 1: Alignment & Requirements":0.5,"Phase 2: Prompt Build & Internal Validation":0.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":35.6},"sp":null,"cr":"2026-03-23","lt":"2026-05-11"},{"k":"PROMPT-17","s":"Dynamic slot booking","a":"Anurag","af":"Anurag Kalgi","c":"Blocked","t":50,"p":{"Not Started":16.6,"Phase 1: Alignment & Requirements":0.6,"Phase 2: Prompt Build & Internal Validation":10.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":0.5,"Phase 5: AIA Integration":7,"Phase 6: AP Integration":0.5,"Blocked":18.4},"sp":3,"cr":"2026-03-20","lt":"2026-05-05"},{"k":"PROMPT-16","s":"Autonomous AI agent for resolving failed deliveries","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-15","s":"Document Correction for Customs Clearance","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-14","s":"Yard ready notification to carriers","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-13","s":"Retrieve proof of delivery","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-12","s":"Yard move coordination with internal teams","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-11","s":"Stockout risk mitigation","a":"Julia","af":"Julia Domagala","c":"Not Started","t":50,"p":{"Not Started":50.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-20"},{"k":"PROMPT-10","s":"Missed Appointment Recovery Outreach","a":"Paulina","af":"Paulina Gardyan","c":"Blocked","t":50,"p":{"Not Started":18.7,"Blocked":32.4},"sp":null,"cr":"2026-03-20","lt":"2026-04-15"},{"k":"PROMPT-9","s":"Real Time Dock Delay Notification","a":"Paulina","af":"Paulina Gardyan","c":"Blocked","t":50,"p":{"Not Started":18.7,"Blocked":32.4},"sp":null,"cr":"2026-03-20","lt":"2026-04-15"},{"k":"PROMPT-8","s":"Ocean - Source missing FFW origin milestones","a":"Bheru","af":"Bheru M","c":"Phase 4: Ready for Development","t":50,"p":{"Not Started":1.5,"Waiting For Customer / 3rd Party":0.5,"Phase 1: Alignment & Requirements":0.5,"Phase 2: Prompt Build & Internal Validation":0.5,"Phase 3: External Testing":0.5,"Phase 4: Ready for Development":49.4},"sp":null,"cr":"2026-03-20","lt":"2026-03-23"},{"k":"PROMPT-7","s":"TL DQ - No show Prevention and COnfirmation","a":"Mikolaj","af":"Mikolaj Korcala","c":"Blocked","t":51,"p":{"Not Started":0.7,"Blocked":51.4},"sp":null,"cr":"2026-03-19","lt":"2026-03-19"},{"k":"PROMPT-6","s":"TL DQ - Appointment Change Negotiation","a":"Mikolaj","af":"Mikolaj Korcala","c":"Blocked","t":51,"p":{"Not Started":0.7,"Blocked":51.4},"sp":null,"cr":"2026-03-19","lt":"2026-03-19"},{"k":"PROMPT-2","s":"Completed Late Shipment Reason Capture","a":"Anurag","af":"Anurag Kalgi","c":"Waiting For Customer / 3rd Party","t":52,"p":{"Not Started":0.7,"In Progress":1.6,"Phase 3: External Testing":32.6,"Blocked":0.6,"Waiting For Customer / 3rd Party":19.4},"sp":null,"cr":"2026-03-18","lt":"2026-05-04"},{"k":"PROMPT-1","s":"FTL DQ - Broken Telematics Escalation ","a":"Paulina","af":"Paulina Gardyan","c":"Phase 6: AP Integration","t":52,"p":{"Not Started":0.5,"In Progress":1.6,"Phase 3: External Testing":0.6,"Phase 4: Ready for Development":0.6,"Phase 5: AIA Integration":1.2,"Phase 6: AP Integration":52.7,"Phase 7: Beta":1.3,"General Availability":0.6},"sp":null,"cr":"2026-03-18","lt":"2026-03-19"},{"k":"PROMPT-46","s":"LTL Collect Delivery Milestone - LP Migration","a":"Daniel","af":"Daniel Merino","c":"Not Started","t":10,"p":{"Not Started":10.4},"sp":null,"cr":"2026-05-15","lt":"2026-05-15"},{"k":"PROMPT-45","s":"LTL Invalid Shipment ID - LP Migration","a":"Bheru","af":"Bheru M","c":"Phase 1: Alignment & Requirements","t":10,"p":{"Not Started":1.6,"Phase 1: Alignment & Requirements":9.4},"sp":1,"cr":"2026-05-15","lt":"2026-05-18"},{"k":"PROMPT-47","s":"TL Appoinment Window Outbound - LP Migration","a":"Anurag","af":"Anurag Kalgi","c":"Not Started","t":10,"p":{"Not Started":10.4},"sp":null,"cr":"2026-05-15","lt":"2026-05-15"},{"k":"PROMPT-34","s":"DUMMY — FTL Missing Pickup Confirmation","a":"Julia","af":"Julia Domagala","c":"Phase 4: Ready for Development","t":31,"p":{"Not Started":0.7,"Blocked":0.7,"Phase 1: Alignment & Requirements":0.8,"Phase 2: Prompt Build & Internal Validation":0.8,"Phase 3: External Testing":0.8,"Phase 4: Ready for Development":31.4},"sp":null,"cr":"2026-04-16","lt":"2026-04-16"},{"k":"IRL-42","s":"Appendix for Raben Transport (PLRABENS) about AI Agents Work","a":"Paulina","af":"Paulina Gardyan","c":"Open","t":68,"p":{"Not Started":68.4},"sp":null,"cr":"2026-02-24","lt":"2026-02-24"},{"k":"IRL-40","s":"The carrier wants to receive data about the subcontractors w","a":"Mikolaj","af":"Mikolaj Korcala","c":"Waiting For Additional Info","t":158,"p":{"Not Started":0.9,"In Review":0.9,"Waiting For Additional Info":158.4},"sp":null,"cr":"2025-10-21","lt":"2025-10-21"}];
+const RAW = [{"k":"AIA-607","s":"Update Outbound connector for Happy Robot Missing and Unknown Equipment ID","a":"Paulina","af":"Paulina Gardyan","c":"Waiting/Blocked","t":65,"p":{"Not Started":0,"Waiting/Blocked":65},"sp":3,"cr":"2026-02-23"},{"k":"PROMPT-60","s":"LTL Milestones - Investigate missing webhook responses for Pick Up, Delivery, and Out for Delivery milestones","a":"Daniel","af":"Daniel Merino","c":"Not Started","t":0,"p":{"Not Started":0},"sp":3,"cr":"2026-05-27"},{"k":"PROMPT-61","s":"Invalid Shipment ID Workflow - Investigate incorrect reason codes and missing data","a":"Bheru","af":"Bheru M","c":"Not Started","t":0,"p":{"Not Started":0},"sp":3,"cr":"2026-05-27"},{"k":"PROMPT-62","s":"Lunapath - Knowledge Base Feature Testing & Sign-Off","a":"Julia","af":"Julia Domagala","c":"Not Started","t":0,"p":{"Not Started":0},"sp":2,"cr":"2026-05-27"},{"k":"IRL-40","s":"The carrier wants to receive data about the subcontractors w","a":"Mikolaj","c":"Waiting For Additional Info","t":155,"p":{"Not Started":0.2,"In Review":0.0,"Waiting For Additional Info":154.9},"sp":null,"af":"Mikolaj Korcala","cr":"2025-10-01"},{"k":"TIER3-20573","s":"DHLY Air Pull Movement: No milestones/tracking for valid DHL","a":"Daniel","c":"Open","t":73,"p":{"Not Started":72.7},"sp":null,"af":"Daniel Merino","cr":"2026-02-13"},{"k":"IRL-42","s":"Appendix for Raben Transport (PLRABENS) about AI Agents Work","a":"Paulina","c":"Open","t":65,"p":{"Not Started":65.1},"sp":null,"af":"Paulina Gardyan","cr":"2025-10-01"},{"k":"PIR-3429","s":"Create a new data point to capture untracked carrier volume ","a":"Julia","c":"Waiting For Additional Info","t":51,"p":{"Not Started":0.0,"Waiting For Additional Info":50.9},"sp":null,"af":"Julia Domagala","cr":"2026-03-16"},{"k":"PROMPT-1","s":"FTL DQ - Broken Telematics Escalation ","a":"Paulina","c":"Phase 6: AP Integration","t":49,"p":{"Not Started":0.0,"In Progress":0.8,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":0.0,"Phase 5: AIA Integration":0.0,"Phase 6: AP Integration":48.6,"Phase 7: Beta":0.0,"General Availability":0.0},"sp":null,"af":"Paulina Gardyan","cr":"2026-03-18"},{"k":"PROMPT-2","s":"Completed Late Shipment Reason Capture","a":"Anurag","c":"Waiting For Customer / 3rd Party","t":49,"p":{"Not Started":0.0,"In Progress":0.6,"Phase 3: External Testing":32.9,"Blocked":0.0,"Waiting For Customer / 3rd Party":15.8},"sp":null,"af":"Anurag Kalgi","cr":"2026-03-18"},{"k":"PROMPT-5","s":"FTL DQ - Temperature breach intervention","a":"Mikolaj","c":"Blocked","t":48,"p":{"Not Started":0.0,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":4.3,"Phase 3: External Testing":0.6,"Waiting For Customer / 3rd Party":25.0,"Blocked":18.6},"sp":4,"af":"Mikolaj Korcala","cr":"2026-03-19"},{"k":"PROMPT-6","s":"TL DQ - Appointment Change Negotiation","a":"Mikolaj","c":"Blocked","t":49,"p":{"Not Started":0.0,"Blocked":48.6},"sp":null,"af":"Mikolaj Korcala","cr":"2026-03-19"},{"k":"PROMPT-7","s":"TL DQ - No show Prevention and COnfirmation","a":"Mikolaj","c":"Blocked","t":49,"p":{"Not Started":0.0,"Blocked":48.6},"sp":null,"af":"Mikolaj Korcala","cr":"2026-03-19"},{"k":"PROMPT-8","s":"Ocean - Source missing FFW origin milestones","a":"Bheru","c":"Phase 4: Ready for Development","t":48,"p":{"Not Started":2.2,"Waiting For Customer / 3rd Party":0.0,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":45.9},"sp":null,"af":"Bheru M","cr":"2026-03-20"},{"k":"PROMPT-9","s":"Real Time Dock Delay Notification","a":"Paulina","c":"Blocked","t":48,"p":{"Not Started":18.6,"Blocked":29.4},"sp":null,"af":"Paulina Gardyan","cr":"2026-03-20"},{"k":"PROMPT-10","s":"Missed Appointment Recovery Outreach","a":"Paulina","c":"Blocked","t":48,"p":{"Not Started":18.6,"Blocked":29.4},"sp":null,"af":"Paulina Gardyan","cr":"2026-03-20"},{"k":"PROMPT-11","s":"Stockout risk mitigation","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-12","s":"Yard move coordination with internal teams","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-13","s":"Retrieve proof of delivery","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-14","s":"Yard ready notification to carriers","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-15","s":"Document Correction for Customs Clearance","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-16","s":"Autonomous AI agent for resolving failed deliveries","a":"Julia","c":"Not Started","t":48,"p":{"Not Started":48.0},"sp":null,"af":"Julia Domagala","cr":"2026-03-20"},{"k":"PROMPT-17","s":"Dynamic slot booking","a":"Anurag","c":"Blocked","t":48,"p":{"Not Started":17.1,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":10.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":0.0,"Phase 5: AIA Integration":5.6,"Phase 6: AP Integration":0.0,"Blocked":15.2},"sp":3,"af":"Anurag Kalgi","cr":"2026-03-20"},{"k":"PROMPT-18","s":"Ocean D2D - Sourcing FFW Delivery Milestone","a":"Bheru","c":"Waiting For Customer / 3rd Party","t":46,"p":{"Not Started":0.0,"Waiting For Customer / 3rd Party":10.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":35.0},"sp":null,"af":"Bheru M","cr":"2026-03-23"},{"k":"PROMPT-19","s":"FTL - Route Deviation Voice Agent (DISTANCE & TIME)","a":"Bheru","c":"Waiting For Customer / 3rd Party","t":46,"p":{"Not Started":0.0,"Waiting For Customer / 3rd Party":15.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":0.0,"Phase 5: AIA Integration":30.1},"sp":null,"af":"Bheru M","cr":"2026-03-23"},{"k":"PROMPT-20","s":"Push Driveview carriers to ELD ","a":"Paulina","c":"Phase 5: AIA Integration","t":45,"p":{"Not Started":15.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":29.2,"Phase 5: AIA Integration":0.1},"sp":2,"af":"Paulina Gardyan","cr":"2026-03-24"},{"k":"PROMPT-22","s":"Ocean - Confirm ETA and collect reason code","a":"Bheru","c":"Phase 2: Prompt Build & Internal Validation","t":45,"p":{"Not Started":0.0,"Phase 1: Alignment & Requirements":19.9,"Phase 2: Prompt Build & Internal Validation":25.1},"sp":1,"af":"Bheru M","cr":"2026-03-24"},{"k":"PROMPT-23","s":"Ocean | Vessel Arrival Exception","a":"Daniel","c":"Waiting For Customer / 3rd Party","t":45,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":0.1,"Phase 2: Prompt Build & Internal Validation":5.8,"Phase 3: External Testing":6.3,"Phase 4: Ready for Development":0.9,"Blocked":3.3,"Waiting For Customer / 3rd Party":27.9},"sp":3,"af":"Daniel Merino","cr":"2026-03-24"},{"k":"PROMPT-24","s":"Investigate container location for demurrage prevention - AP","a":"Daniel","c":"Waiting For Customer / 3rd Party","t":45,"p":{"Not Started":20.1,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":0.0,"Phase 5: AIA Integration":4.9,"Blocked":15.1,"Phase 6: AP Integration":0.0,"Phase 7: Beta":1.3,"Waiting For Customer / 3rd Party":3.5},"sp":2,"af":"Daniel Merino","cr":"2026-03-24"},{"k":"PROMPT-25","s":"LTL: Confirm ETA & Collect Reason Code for Late Shipments","a":"Anurag","c":"Phase 6: AP Integration","t":44,"p":{"Not Started":0.0,"Phase 1: Alignment & Requirements":3.5,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":10.1,"Phase 5: AIA Integration":0.0,"Phase 6: AP Integration":30.8},"sp":1,"af":"Anurag Kalgi","cr":"2026-03-25"},{"k":"PROMPT-26","s":"Ocean | Vessel Discharge Exception","a":"Daniel","c":"Phase 7: Beta","t":44,"p":{"Not Started":9.1,"Phase 3: External Testing":7.0,"Phase 4: Ready for Development":2.9,"Phase 5: AIA Integration":5.1,"Blocked":7.1,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 6: AP Integration":0.0,"Phase 7: Beta":12.8},"sp":3,"af":"Daniel Merino","cr":"2026-03-25"},{"k":"PROMPT-28","s":"FTL Collect missing pickup arrival milestone","a":"Mikolaj","c":"Phase 4: Ready for Development","t":30,"p":{"Not Started":5.9,"Blocked":0.1,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":1.2,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":23.1},"sp":null,"af":"Mikolaj Korcala","cr":"2026-04-14"},{"k":"PROMPT-29","s":"FTL Collect missing pickup departure milestone","a":"Paulina","c":"Phase 5: AIA Integration","t":30,"p":{"Not Started":0.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":1.4,"Phase 3: External Testing":0.1,"Phase 4: Ready for Development":27.8,"Phase 5: AIA Integration":0.1},"sp":1,"af":"Paulina Gardyan","cr":"2026-04-14"},{"k":"PROMPT-30","s":"FTL Collect missing delivery arrival milestone","a":"Paulina","c":"Phase 5: AIA Integration","t":30,"p":{"Not Started":0.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":4.2,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":25.0,"Phase 5: AIA Integration":0.1},"sp":1,"af":"Paulina Gardyan","cr":"2026-04-14"},{"k":"PROMPT-31","s":"FTL Collect missing delivery departure milestone","a":"Paulina","c":"Phase 5: AIA Integration","t":30,"p":{"Not Started":0.8,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":5.6,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":23.5,"Phase 5: AIA Integration":0.1},"sp":1,"af":"Paulina Gardyan","cr":"2026-04-14"},{"k":"PROMPT-32","s":"FTL Collect missing transfer arrival milestone","a":"Mikolaj","c":"Phase 4: Ready for Development","t":30,"p":{"Not Started":0.9,"Phase 1: Alignment & Requirements":1.3,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":27.9,"Phase 5: AIA Integration":0.1},"sp":1,"af":"Mikolaj Korcala","cr":"2026-04-14"},{"k":"PROMPT-33","s":"FTL Collect missing transfer departure milestone","a":"Mikolaj","c":"Phase 4: Ready for Development","t":30,"p":{"Not Started":0.9,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.7,"Blocked":2.8,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":25.1},"sp":2,"af":"Mikolaj Korcala","cr":"2026-04-15"},{"k":"PROMPT-34","s":"DUMMY \u2014 FTL Missing Pickup Confirmation","a":"Julia","c":"Phase 4: Ready for Development","t":28,"p":{"Not Started":0.0,"Blocked":0.0,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":28.5},"sp":null,"af":"Julia Domagala","cr":"2026-04-16"},{"k":"PROMPT-36","s":"FTL Validate Idling in Risky Zone (Voice \u2014 Carrier Dispatch)","a":"Bheru","c":"Phase 4: Ready for Development","t":16,"p":{"Not Started":0.1,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":0.0,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":15.8},"sp":0,"af":"Bheru M","cr":"2026-05-04"},{"k":"PROMPT-39","s":"Retrieve reason code for dwelling shipment at a Transshipmen","a":"Daniel","c":"Phase 3: External Testing","t":13,"p":{"Not Started":2.5,"Phase 1: Alignment & Requirements":2.1,"Blocked":0.0,"Phase 2: Prompt Build & Internal Validation":4.4,"Phase 3: External Testing":4.0},"sp":2,"af":"Daniel Merino","cr":"2026-05-08"},{"k":"PROMPT-40","s":"Source destination milestones from FFW for Air","a":"Bheru","c":"Phase 4: Ready for Development","t":13,"p":{"Not Started":2.9,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":2.2,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":8.0},"sp":2,"af":"Bheru M","cr":"2026-05-08"},{"k":"PROMPT-41","s":"AI AIR Use Case: Confirm ETA for Proof of Delivery & Reason ","a":"Paulina","c":"Waiting For Customer / 3rd Party","t":11,"p":{"Not Started":0.1,"Phase 1: Alignment & Requirements":4.9,"Waiting For Customer / 3rd Party":5.8},"sp":2,"af":"Paulina Gardyan","cr":"2026-05-11"},{"k":"PROMPT-42","s":"Air D2D - Sourcing FFW Pickup Milestones","a":"Bheru","c":"Phase 2: Prompt Build & Internal Validation","t":11,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":10.1},"sp":1,"af":"Bheru M","cr":"2026-05-11"},{"k":"PROMPT-44","s":"Missing Equipment ID - Migration to LP","a":"Paulina","c":"Phase 2: Prompt Build & Internal Validation","t":8,"p":{"Not Started":3.4,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":4.5},"sp":1,"af":"Paulina Gardyan","cr":"2026-05-15"},{"k":"PROMPT-45","s":"LTL Invalid Shipment ID - LP Migration","a":"Bheru","c":"Phase 1: Alignment & Requirements","t":8,"p":{"Not Started":2.1,"Phase 1: Alignment & Requirements":5.8},"sp":1,"af":"Bheru M","cr":"2026-05-15"},{"k":"PROMPT-46","s":"LTL Collect Delivery Milestone - LP Migration","a":"Daniel","c":"Not Started","t":8,"p":{"Not Started":7.9},"sp":null,"af":"Daniel Merino","cr":"2026-05-15"},{"k":"PROMPT-47","s":"TL Appoinment Window Outbound - LP Migration","a":"Anurag","c":"Not Started","t":8,"p":{"Not Started":7.9},"sp":null,"af":"Anurag Kalgi","cr":"2026-05-15"},{"k":"PROMPT-48","s":"Confirm missed cut off at POL","a":"Mikolaj","c":"Blocked","t":6,"p":{"Not Started":0.7,"Phase 1: Alignment & Requirements":0.8,"Phase 2: Prompt Build & Internal Validation":0.7,"Blocked":3.6},"sp":2,"af":"Mikolaj Korcala","cr":"2026-05-18"},{"k":"PROMPT-49","s":"Update Outbound Connector for Missing and Unknown Equipment ","a":"Paulina","c":"Waiting For Customer / 3rd Party","t":4,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":0.0,"Phase 2: Prompt Build & Internal Validation":2.9,"Waiting For Customer / 3rd Party":0.1},"sp":3,"af":"Paulina Gardyan","cr":"2026-05-21"},{"k":"PROMPT-50","s":"FTL DQ Unknown Equipment ID - Accept all equipment ID types ","a":"Mikolaj","c":"Phase 1: Alignment & Requirements","t":4,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":3.0},"sp":3,"af":"Mikolaj Korcala","cr":"2026-05-21"},{"k":"PROMPT-51","s":"FTL DQ Inactive Assets - Accept all equipment ID types (all ","a":"Paulina","c":"Phase 2: Prompt Build & Internal Validation","t":4,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":2.2,"Phase 2: Prompt Build & Internal Validation":0.8,"Phase 3: External Testing":0.0,"Phase 4: Ready for Development":0.0},"sp":3,"af":"Paulina Gardyan","cr":"2026-05-21"},{"k":"PROMPT-52","s":"FTL DQ Missing Equipment ID - Accept all equipment ID types ","a":"Paulina","c":"Phase 2: Prompt Build & Internal Validation","t":4,"p":{"Not Started":0.6,"Phase 1: Alignment & Requirements":2.2,"Phase 2: Prompt Build & Internal Validation":0.8},"sp":3,"af":"Paulina Gardyan","cr":"2026-05-21"},{"k":"PROMPT-53","s":"FTL \u2014 Proactive Outreach for Shipment Creation Failures","a":"Paulina","c":"Not Started","t":3,"p":{"Not Started":2.9},"sp":null,"af":"Paulina Gardyan","cr":"2026-05-22"},{"k":"PROMPT-54","s":"FTL \u2014 Validate Early ETAs \u2014 Carrier & Driver Outreach","a":"Mikolaj","c":"Not Started","t":3,"p":{"Not Started":2.9},"sp":null,"af":"Mikolaj Korcala","cr":"2026-05-22"},{"k":"PROMPT-55","s":"FTL \u2014 Investigate Idle or Stale Shipment Positions \u2014 Carrier","a":"Bheru","c":"Not Started","t":3,"p":{"Not Started":2.9},"sp":null,"af":"Bheru M","cr":"2026-05-22"},{"k":"PROMPT-56","s":"LTL \u2014 Proactive Outreach for Invalid Customer Credentials","a":"Anurag","c":"Not Started","t":3,"p":{"Not Started":2.9},"sp":null,"af":"Anurag Kalgi","cr":"2026-05-22"},{"k":"PROMPT-57","s":"FTL \u2014 Reactivate Dormant Subcontractor Carriers \u2014 Email & Ph","a":"Daniel","c":"Not Started","t":3,"p":{"Not Started":2.9},"sp":null,"af":"Daniel Merino","cr":"2026-05-22"},{"k":"PROMPT-58","s":"Investigate container location for demurrage prevention - Tr","a":"Daniel","c":"Not Started","t":1,"p":{"Not Started":0.8},"sp":null,"af":"Daniel Merino","cr":"2026-05-25"},{"k":"PROMPT-59","s":"Investigate container location for demurrage prevention - LB","a":"Daniel","c":"Not Started","t":1,"p":{"Not Started":0.8},"sp":null,"af":"Daniel Merino","cr":"2026-05-25"}];
 
 // Define phase columns to show in table (skip zero-only phases)
 const PHASE_COLS = [
@@ -646,6 +690,43 @@ function saveTodaySnapshot() {
 
 let flowChart = null, phaseChart = null;
 
+// &#9472;&#9472; OKR 6.3 tracker &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+function renderOKR(snaps) {
+  const card = document.getElementById('okr-card');
+  // Only show for new-workflow (OKR is team active time)
+  const nwSnaps = snaps.filter(s => s['new-workflow']?.flowTime != null);
+  if (nwSnaps.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Baseline = average active flowTime across Q1 2026 snapshots (Feb&#8211;Apr)
+  const q1Snaps = nwSnaps.filter(s => quarterLabel(s.date) === 'Q1 2026');
+  const q1Vals = q1Snaps.map(s => s['new-workflow'].flowTime).filter(v => v != null);
+  const baseline = q1Vals.length > 0 ? Math.round(q1Vals.reduce((a,b)=>a+b,0)/q1Vals.length*10)/10 : null;
+  const target = baseline != null ? Math.round(baseline * 0.70 * 10) / 10 : null;
+
+  // Current = latest week's active flowTime
+  const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
+
+  document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '&#8212;';
+  document.getElementById('okr-target').textContent = target != null ? '&#8804; ' + target + ' bd' : '&#8212;';
+
+  const el = document.getElementById('okr-current');
+  el.textContent = current != null ? current + ' bd' : '&#8212;';
+
+  if (baseline != null && current != null) {
+    const reductionPct = Math.round((baseline - current) / baseline * 100);
+    const progressPct = Math.max(0, Math.min(100, Math.round(reductionPct / 30 * 100)));
+    const progEl = document.getElementById('okr-progress');
+    progEl.textContent = reductionPct > 0 ? '&#8722;' + reductionPct + '%' : '+' + Math.abs(reductionPct) + '%';
+    progEl.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 0 ? 'var(--yellow)' : 'var(--red)';
+    el.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--text)';
+    document.getElementById('okr-bar').style.width = progressPct + '%';
+    document.getElementById('okr-bar').style.background = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--accent)';
+    document.getElementById('okr-bar-label').textContent = progressPct + '% of 30% goal achieved';
+  }
+  return { baseline, target };
+}
+
 function renderTrends(typeFilter) {
   const snaps = loadSnapshots();
   const trendsGrid = document.getElementById('trends-grid');
@@ -654,6 +735,7 @@ function renderTrends(typeFilter) {
   trendsEmpty.style.display = 'none';
 
   const key = typeFilter || 'new-workflow';
+  const okrData = renderOKR(snaps);
   const excludeBlocked = document.getElementById('trends-exclude-blocked').checked;
   const BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","Not Started"]);
   const activePhasesOnly = TREND_PHASES.filter(p => !BLOCKED_PHASES.has(p));
@@ -698,6 +780,21 @@ function renderTrends(typeFilter) {
     fill: excludeBlocked,
     spanGaps: true,
   });
+
+  // OKR target line
+  if (okrData?.target != null) {
+    flowDatasets.push({
+      label: 'OKR 6.3 target (&#8722;30%)',
+      data: snaps.map(() => okrData.target),
+      borderColor: '#f85149',
+      borderWidth: 1.5,
+      borderDash: [6, 4],
+      pointRadius: 0,
+      tension: 0,
+      fill: false,
+      spanGaps: true,
+    });
+  }
 
   flowChart = new Chart(ctxFlow, {
     type: 'line',
@@ -751,6 +848,12 @@ function renderTrends(typeFilter) {
 
   // Chart 4: Quarterly Throughput
   buildThroughputChart();
+
+  // Chart 5: Pipeline Intake (Ph4 entry per quarter)
+  buildPh4EntryChart();
+
+  // Chart 6: All-Time Phase Completion
+  buildAllTimeChart();
 }
 
 // &#9472;&#9472; Quarter-over-Quarter Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
@@ -838,7 +941,6 @@ function renderQoQ(key) {
       tension: 0.3,
       pointRadius: 5,
       spanGaps: true,
-      hidden: true, // start hidden &#8212; user can enable from legend
     },
     {
       label: 'Flow (active only)',
@@ -854,7 +956,6 @@ function renderQoQ(key) {
       tension: 0.3,
       pointRadius: 5,
       spanGaps: true,
-      hidden: true,
     },
   ];
 
@@ -923,18 +1024,18 @@ const THROUGHPUT_COLORS = {
 };
 
 const THROUGHPUT_SHORT = {
-  'Phase 1: Alignment & Requirements':          'Ph 1',
-  'Phase 2: Prompt Build & Internal Validation':'Ph 2',
-  'Phase 3: External Testing':                  'Ph 3',
-  'Phase 4: Ready for Development':             'Ph 4',
-  'Phase 5: AIA Integration':                   'Ph 5',
-  'Phase 6: AP Integration':                    'Ph 6',
-  'Phase 7: Beta':                              'Beta &#10003;',
+  'Phase 1: Alignment & Requirements':          'Ph 1: Alignment',
+  'Phase 2: Prompt Build & Internal Validation':'Ph 2: Build',
+  'Phase 3: External Testing':                  'Ph 3: Testing',
+  'Phase 4: Ready for Development':             'Ph 4: Dev Ready',
+  'Phase 5: AIA Integration':                   'Ph 5: AIA',
+  'Phase 6: AP Integration':                    'Ph 6: AP',
+  'Phase 7: Beta':                              'Ph 7: Beta &#10003;',
   'General Availability':                       'GA &#10003;',
   'Blocked':                                    'Blocked',
-  'Waiting For Customer / 3rd Party':           'Waiting',
-  'Waiting For Additional Info':                'Waiting',
-  'Waiting/Blocked':                            'Waiting',
+  'Waiting For Customer / 3rd Party':           'Waiting (Cust)',
+  'Waiting For Additional Info':                'Waiting (Info)',
+  'Waiting/Blocked':                            'Waiting/Blocked',
   'Not Started':                                'Not Started',
 };
 
@@ -1005,6 +1106,154 @@ function buildThroughputChart() {
           ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
           beginAtZero: true,
           title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+// &#9472;&#9472; Pipeline Intake Chart &#8212; tickets entering Ph4 per quarter &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let ph4EntryChart = null;
+
+function buildPh4EntryChart() {
+  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+
+  // Tickets that have reached Ph4 or beyond
+  const ph4PlusPhases = new Set([
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+    'General Availability',
+  ]);
+
+  const byQ = {};
+  tickets.forEach(t => {
+    // Check if ticket has been in Ph4: has time recorded there, or current phase is Ph4+
+    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p['Phase 4: Ready for Development'] || 0) > 0);
+    if (!hasPh4) return;
+    const dateStr = t.lt || t.cr;
+    if (!dateStr) return;
+    const q = quarterLabel(dateStr);
+    byQ[q] = (byQ[q] || 0) + 1;
+  });
+
+  const quarters = Object.keys(byQ).sort();
+  if (quarters.length === 0) return;
+
+  const ctx = document.getElementById('chart-ph4-entry').getContext('2d');
+  if (ph4EntryChart) ph4EntryChart.destroy();
+  ph4EntryChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: quarters,
+      datasets: [{
+        label: 'Tickets entering Dev Ready',
+        data: quarters.map(q => byQ[q] || 0),
+        backgroundColor: '#e3702a99',
+        borderColor: '#e3702a',
+        borderWidth: 2,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} entered Ph4: Dev Ready`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#e6edf3', font: { size: 12, weight: '600' } }
+        },
+        y: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
+          beginAtZero: true,
+          title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+// &#9472;&#9472; All-Time Phase Completion Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let allTimeChart = null;
+
+function buildAllTimeChart() {
+  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+
+  // Count by current phase
+  const byPhase = {};
+  tickets.forEach(t => {
+    const phase = t.c || 'Not Started';
+    byPhase[phase] = (byPhase[phase] || 0) + 1;
+  });
+
+  // Order phases logically (active/done phases first, then waiting/blocked)
+  const phaseOrder = [
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+    'General Availability',
+    'Not Started',
+    'Blocked',
+    'Waiting For Customer / 3rd Party',
+    'Waiting For Additional Info',
+    'Waiting/Blocked',
+  ];
+
+  const labels = phaseOrder.filter(p => (byPhase[p] || 0) > 0);
+  const data = labels.map(p => byPhase[p]);
+  const colors = labels.map(p => THROUGHPUT_COLORS[p] || '#8b949e');
+  const shortLabels = labels.map(p => THROUGHPUT_SHORT[p] || p);
+
+  const ctx = document.getElementById('chart-alltime').getContext('2d');
+  if (allTimeChart) allTimeChart.destroy();
+  allTimeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: shortLabels,
+      datasets: [{
+        label: 'Tickets in phase',
+        data,
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => labels[items[0].dataIndex],
+            label: c => ` ${c.parsed.x} ticket${c.parsed.x !== 1 ? 's' : ''}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 },
+          beginAtZero: true,
+          title: { display: true, text: 'Tickets', color: '#8b949e', font: { size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#e6edf3', font: { size: 11 } }
         }
       }
     }
