@@ -431,7 +431,7 @@ function statusPillClass(c) {
 
 function fmtDays(d) {
   if (!d || d === 0) return '';
-  return d % 1 === 0 ? d + 'd' : d.toFixed(1) + 'd';
+  return d % 1 === 0 ? d + 'bd' : d.toFixed(1) + 'bd';
 }
 
 // Compute phase averages
@@ -550,7 +550,7 @@ function buildTable(rows) {
       <td style="white-space:nowrap;">${issue.af || issue.a}</td>
       <td style="text-align:center;font-weight:600;color:${issue.sp > 0 ? 'var(--accent)' : 'var(--text-muted)'};">${spLabel}</td>
       <td><span class="status-pill ${statusPillClass(issue.c)}">${issue.c}</span></td>
-      <td class="total-cell">${issue.t}d</td>
+      <td class="total-cell">${issue.t}bd</td>
       ${cells}
     </tr>`;
   }).join('');
