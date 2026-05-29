@@ -1418,7 +1418,7 @@ function buildPh4QoQChart() {
     if (!hasPh4) return;
     const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
     if (!dateStr) return;
-    const q = p44Quarter(dateStr);
+    const q = quarterLabel(dateStr);
     byQtr[q] = (byQtr[q] || 0) + 1;
   });
 
