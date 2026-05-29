@@ -254,7 +254,7 @@
   <div id="okr-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:none;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
       <span style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.5px;">OKR 6.3</span>
-      <span style="font-size:12px;color:var(--text-muted);">Reduce time to go live by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2026) &#183; Active build time only (excl. blocked &amp; waiting)</span>
+      <span style="font-size:12px;color:var(--text-muted);">Reduce time to reach Dev Ready by 30% through Agent Factory model &#183; Target: end of Q2 FY27 (Jul 2026) &#183; Ph1+Ph2+Ph3 active time only (excl. Ph4, Ph5, blocked &amp; waiting)</span>
     </div>
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div>
@@ -950,19 +950,27 @@ let ph4ScatterChart = null;
 // &#9472;&#9472; OKR 6.3 tracker &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
 function renderOKR(snaps) {
   const card = document.getElementById('okr-card');
-  // Only show for new-workflow (OKR is team active time)
-  const nwSnaps = snaps.filter(s => s['new-workflow']?.flowTime != null);
+  // OKR metric = Ph1+Ph2+Ph3 only (time to reach Dev Ready, active phases)
+  const PH1 = 'Phase 1: Alignment & Requirements';
+  const PH2 = 'Phase 2: Prompt Build & Internal Validation';
+  const PH3 = 'Phase 3: External Testing';
+  function ph4EntryTime(snap) {
+    const p = snap?.phases || {};
+    const v = (p[PH1]||0) + (p[PH2]||0) + (p[PH3]||0);
+    return v > 0 ? Math.round(v * 10) / 10 : null;
+  }
+  const nwSnaps = snaps.filter(s => s['new-workflow'] && ph4EntryTime(s['new-workflow']) != null);
   if (nwSnaps.length === 0) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  // Baseline = average active flowTime across Q1 2026 snapshots (Feb&#8211;Apr)
+  // Baseline = average Ph1+Ph2+Ph3 across Q1 2026 snapshots (Feb&#8211;Apr)
   const q1Snaps = nwSnaps.filter(s => quarterLabel(s.date) === 'Q1 2026');
-  const q1Vals = q1Snaps.map(s => s['new-workflow'].flowTime).filter(v => v != null);
+  const q1Vals = q1Snaps.map(s => ph4EntryTime(s['new-workflow'])).filter(v => v != null);
   const baseline = q1Vals.length > 0 ? Math.round(q1Vals.reduce((a,b)=>a+b,0)/q1Vals.length*10)/10 : null;
   const target = baseline != null ? Math.round(baseline * 0.70 * 10) / 10 : null;
 
-  // Current = latest week's active flowTime
-  const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
+  // Current = latest week's Ph1+Ph2+Ph3
+  const current = ph4EntryTime(nwSnaps[nwSnaps.length - 1]['new-workflow']);
 
   document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '\u2014';
   document.getElementById('okr-target').textContent = target != null ? '&#8804; ' + target + ' bd' : '\u2014';
