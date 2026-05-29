@@ -324,6 +324,16 @@
       <div class="chart-sub">How many PROMPT tickets were in each phase at the latest snapshot per quarter &#183; Builds up over time as weekly snapshots are collected &#183; <span style="color:#e3b341;">Data from Q2 2026 onwards (snapshots started May 2026)</span></div>
       <canvas id="chart-wip" style="max-height:320px;"></canvas>
     </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Phase Gate Time &#8212; Avg Business Days from Creation to Each Milestone</h3>
+      <div class="chart-sub">New workflow PROMPT tickets only &#183; Shows how long it takes (on average) before a ticket reaches each phase &#183; Based on cumulative phase time in the ticket &#183; Longer bars = more pre-work before that gate &#183; Only tickets that reached each phase are included</div>
+      <canvas id="chart-gate-time" style="max-height:320px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Velocity Story &#8212; Completions Up, Flow Time Down</h3>
+      <div class="chart-sub">PROMPT tickets completed (Beta/GA) per quarter (bars, left axis) vs. avg active flow time at end of quarter from weekly snapshots (line, right axis) &#183; Rising bars + falling line = the team is shipping more and shipping faster</div>
+      <canvas id="chart-velocity" style="max-height:320px;"></canvas>
+    </div>
   </div>
 </div>
 
@@ -872,6 +882,12 @@ function renderTrends(typeFilter) {
 
   // Chart 7: WIP Snapshot &#8212; end-of-quarter portfolio state
   buildWipChart();
+
+  // Chart 8: Phase Gate Time &#8212; avg days from creation to each milestone
+  buildGateTimeChart();
+
+  // Chart 9: Velocity Story &#8212; completions up, flow time down
+  buildVelocityChart();
 }
 
 // &#9472;&#9472; Quarter-over-Quarter Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
@@ -1363,6 +1379,193 @@ function buildWipChart() {
         x: { stacked: true, grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 12, weight: '600' } } },
         y: { stacked: true, grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 }, beginAtZero: true,
              title: { display: true, text: 'Tickets in portfolio', color: '#8b949e', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// &#9472;&#9472; Phase Gate Time Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let gateTimeChart = null;
+function buildGateTimeChart() {
+  const PHASE_ORDER = [
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+  ];
+  const PHASE_LABELS = [
+    'Ph 1: Alignment',
+    'Ph 2: Build',
+    'Ph 3: Testing',
+    'Ph 4: Dev Ready',
+    'Ph 5: AIA',
+    'Ph 6: AP',
+    'Ph 7: Beta &#10003;',
+  ];
+  const tickets = RAW.filter(i => i.k && i.k.startsWith('PROMPT'));
+
+  // For each phase, compute the avg cumulative days from creation to reaching it
+  // "reached phase N" means the ticket has spent time in phases 0..N or is in phase N or beyond
+  const avgGateTimes = PHASE_ORDER.map((ph, idx) => {
+    // Ticket "reached" this phase if: it spent time here, is currently here, or is past here
+    const reached = tickets.filter(t => {
+      if ((t.p[ph] || 0) > 0) return true; // spent time in this phase
+      if (t.c === ph) return true;           // currently in this phase
+      if (t.c === 'General Availability') return true; // completed
+      const curIdx = PHASE_ORDER.indexOf(t.c);
+      return curIdx > idx;                   // currently past this phase
+    });
+    if (!reached.length) return null;
+    // Cumulative bd from creation to entering this phase =
+    //   p['Not Started'] + p[Phase 1] + ... + p[Phase idx-1]
+    const vals = reached.map(t => {
+      let cum = t.p['Not Started'] || 0;
+      for (let j = 0; j < idx; j++) cum += (t.p[PHASE_ORDER[j]] || 0);
+      return cum;
+    });
+    return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length * 10) / 10;
+  });
+
+  const ctx = document.getElementById('chart-gate-time').getContext('2d');
+  if (gateTimeChart) gateTimeChart.destroy();
+  const colors = ['#58a6ff','#3fb950','#f0883e','#e3b341','#bc8cff','#ff7b72','#39d353'];
+  gateTimeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: PHASE_LABELS,
+      datasets: [{
+        label: 'Avg bd from creation to reach phase',
+        data: avgGateTimes,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c + 'cc'),
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => c.parsed.x != null ? ` ${c.parsed.x} bd avg from creation` : ' No data yet',
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#8b949e', font: { size: 11 } },
+          beginAtZero: true,
+          title: { display: true, text: 'Business days from ticket creation', color: '#8b949e', font: { size: 11 } }
+        },
+        y: { grid: { display: false }, ticks: { color: '#e6edf3', font: { size: 12 } } }
+      }
+    }
+  });
+}
+
+// &#9472;&#9472; Velocity Story Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let velocityChart = null;
+function buildVelocityChart() {
+  // &#9472;&#9472; Part 1: completions per quarter (Beta/GA tickets by lt date)
+  const COMPLETED = new Set(['Phase 7: Beta', 'General Availability']);
+  const completed = RAW.filter(i => i.k && i.k.startsWith('PROMPT') && COMPLETED.has(i.c));
+  const completionsByQ = {};
+  completed.forEach(t => {
+    const q = quarterLabel(t.lt || t.cr);
+    completionsByQ[q] = (completionsByQ[q] || 0) + 1;
+  });
+
+  // &#9472;&#9472; Part 2: avg active flow time at end of each quarter from snapshots
+  // Use HISTORICAL_SNAPSHOTS &#8212; pick latest snapshot per quarter
+  const flowByQ = {};
+  HISTORICAL_SNAPSHOTS.forEach(snap => {
+    const q = quarterLabel(snap.date);
+    const ft = (snap['new-workflow'] || snap.all)?.flowTime;
+    if (ft != null) flowByQ[q] = ft; // later = overwrites earlier in same quarter
+  });
+
+  // Union of all quarters, sorted chronologically
+  const allQ = [...new Set([...Object.keys(completionsByQ), ...Object.keys(flowByQ)])];
+  // Sort by year/quarter: label is like "Q2 2026"
+  function qSortKey(q) {
+    const m = q.match(/Q(\d) (\d{4})/);
+    return m ? parseInt(m[2]) * 10 + parseInt(m[1]) : 0;
+  }
+  allQ.sort((a, b) => qSortKey(a) - qSortKey(b));
+
+  const completionData = allQ.map(q => completionsByQ[q] || 0);
+  const flowData = allQ.map(q => flowByQ[q] || null);
+
+  const ctx = document.getElementById('chart-velocity').getContext('2d');
+  if (velocityChart) velocityChart.destroy();
+  velocityChart = new Chart(ctx, {
+    data: {
+      labels: allQ,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Completions (Beta/GA)',
+          data: completionData,
+          backgroundColor: 'rgba(63,185,80,0.7)',
+          borderColor: '#3fb950',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Avg active flow time (bd)',
+          data: flowData,
+          borderColor: '#58a6ff',
+          backgroundColor: 'rgba(88,166,255,0.12)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.3,
+          fill: false,
+          yAxisID: 'y2',
+          spanGaps: true,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              if (c.datasetIndex === 0) return ` ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''} completed`;
+              return c.parsed.y != null ? ` ${c.parsed.y} bd avg flow time` : ' No data';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 12, weight: '600' } } },
+        y: {
+          type: 'linear', position: 'left',
+          grid: { color: 'rgba(48,54,61,0.6)' },
+          ticks: { color: '#3fb950', font: { size: 11 }, stepSize: 1 },
+          beginAtZero: true,
+          title: { display: true, text: 'Completions', color: '#3fb950', font: { size: 11 } }
+        },
+        y2: {
+          type: 'linear', position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#58a6ff', font: { size: 11 } },
+          beginAtZero: true,
+          title: { display: true, text: 'Avg flow time (bd)', color: '#58a6ff', font: { size: 11 } }
+        }
       }
     }
   });
