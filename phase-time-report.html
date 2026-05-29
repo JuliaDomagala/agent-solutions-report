@@ -305,18 +305,24 @@
     </div>
     <div class="chart-card" style="grid-column:1/-1;">
       <h3>Quarterly Throughput &#8212; Tickets by Phase Reached</h3>
-      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Each ticket counted once in the quarter it last progressed &#183; Stacked by current phase &#183; <strong style="color:var(--green)">Beta slice = shipped that quarter</strong></div>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; <strong style="color:var(--green)">Only tickets that COMPLETED (reached Beta/GA)</strong> &#183; Counted once in the quarter they were completed &#183; Each ticket counted exactly once</div>
       <canvas id="chart-throughput" style="max-height:340px;"></canvas>
     </div>
     <div class="chart-card">
       <h3>Pipeline Intake &#8212; Tickets Entering Dev Ready per Quarter</h3>
-      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counts tickets that reached <strong>Phase 4: Ready for Development</strong> &#183; Grouped by quarter of last progression &#183; Rising bars = more builds handed to engineering</div>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counts tickets that reached <strong>Phase 4: Ready for Development</strong> &#183; Grouped by the quarter they first entered Ph4 &#183; Rising bars = more builds handed to engineering</div>
+      <div id="ph4-entry-warning" style="color:#e3b341;font-size:11px;margin-bottom:6px;">&#9888; Phase entry dates not yet available &#8212; using last-transition date as proxy. Dates will be accurate from tomorrow's 8am refresh.</div>
       <canvas id="chart-ph4-entry" style="max-height:300px;"></canvas>
     </div>
     <div class="chart-card">
       <h3>All-Time Programme Completion &#8212; Tickets by Current Phase</h3>
       <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Where each ticket currently sits across the full build &#183; Shows the shape of the entire portfolio</div>
       <canvas id="chart-alltime" style="max-height:300px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>WIP Snapshot &#8212; Portfolio State at End of Each Quarter</h3>
+      <div class="chart-sub">How many PROMPT tickets were in each phase at the latest snapshot per quarter &#183; Builds up over time as weekly snapshots are collected &#183; <span style="color:#e3b341;">Data from Q2 2026 onwards (snapshots started May 2026)</span></div>
+      <canvas id="chart-wip" style="max-height:320px;"></canvas>
     </div>
   </div>
 </div>
@@ -607,7 +613,15 @@ function computeSnapshot(rows) {
     const vals = rows.map(i => i.p[p]||0).filter(v => v > 0);
     phases[p] = vals.length > 0 ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null;
   });
-  return { flowTime, phases, count: rows.length, flowCount: flowTickets.length };
+  // Status counts &#8212; how many PROMPT tickets are in each phase right now
+  // Used by WIP snapshot chart to track portfolio state over time
+  const promptRows = rows.filter(i => i.k && i.k.startsWith('PROMPT'));
+  const statusCounts = {};
+  promptRows.forEach(i => {
+    const s = i.c || 'Not Started';
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  return { flowTime, phases, count: rows.length, flowCount: flowTickets.length, statusCounts };
 }
 
 function loadSnapshots() {
@@ -854,6 +868,9 @@ function renderTrends(typeFilter) {
 
   // Chart 6: All-Time Phase Completion
   buildAllTimeChart();
+
+  // Chart 7: WIP Snapshot &#8212; end-of-quarter portfolio state
+  buildWipChart();
 }
 
 // &#9472;&#9472; Quarter-over-Quarter Chart &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
@@ -1040,10 +1057,12 @@ const THROUGHPUT_SHORT = {
 };
 
 function buildThroughputChart() {
-  // PROMPT new-workflow tickets only
-  const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+  // PROMPT new-workflow tickets only &#8212; COMPLETED tickets (Beta/GA) counted by completion quarter
+  // A ticket is "completed" when it reaches Phase 7: Beta or General Availability
+  const COMPLETED_PHASES = new Set(['Phase 7: Beta', 'General Availability']);
+  const tickets = RAW.filter(i => i.k.startsWith('PROMPT') && COMPLETED_PHASES.has(i.c));
 
-  // Group by quarter of last progression (lt if available, else cr)
+  // Group by quarter of completion (lt = last transition date, i.e. when it reached Beta/GA)
   const byQ = {};
   tickets.forEach(t => {
     const dateStr = t.lt || t.cr;
@@ -1117,26 +1136,28 @@ let ph4EntryChart = null;
 
 function buildPh4EntryChart() {
   const tickets = RAW.filter(i => i.k.startsWith('PROMPT'));
+  const PH4 = 'Phase 4: Ready for Development';
 
   // Tickets that have reached Ph4 or beyond
-  const ph4PlusPhases = new Set([
-    'Phase 4: Ready for Development',
-    'Phase 5: AIA Integration',
-    'Phase 6: AP Integration',
-    'Phase 7: Beta',
-    'General Availability',
-  ]);
+  const ph4PlusPhases = new Set([PH4, 'Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability']);
 
+  // Use pe (phase entry date) if available from changelog &#8212; else flag as estimate
+  const hasPeData = tickets.some(t => t.pe && t.pe[PH4]);
   const byQ = {};
   tickets.forEach(t => {
-    // Check if ticket has been in Ph4: has time recorded there, or current phase is Ph4+
-    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p['Phase 4: Ready for Development'] || 0) > 0);
+    const hasPh4 = ph4PlusPhases.has(t.c) || (t.p && (t.p[PH4] || 0) > 0);
     if (!hasPh4) return;
-    const dateStr = t.lt || t.cr;
+    // pe[PH4] = exact date ticket first entered Ph4 (available after refresh adds changelog data)
+    // fallback: use lt (last transition) or cr (creation) &#8212; less accurate
+    const dateStr = (t.pe && t.pe[PH4]) || t.lt || t.cr;
     if (!dateStr) return;
     const q = quarterLabel(dateStr);
     byQ[q] = (byQ[q] || 0) + 1;
   });
+
+  // Show data quality warning if using fallback dates
+  const warningEl = document.getElementById('ph4-entry-warning');
+  if (warningEl) warningEl.style.display = hasPeData ? 'none' : '';
 
   const quarters = Object.keys(byQ).sort();
   if (quarters.length === 0) return;
@@ -1255,6 +1276,92 @@ function buildAllTimeChart() {
           grid: { color: 'rgba(48,54,61,0.6)' },
           ticks: { color: '#e6edf3', font: { size: 11 } }
         }
+      }
+    }
+  });
+}
+
+// &#9472;&#9472; WIP Snapshot Chart &#8212; portfolio state at end of each quarter &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
+let wipChart = null;
+
+function buildWipChart() {
+  const snaps = loadSnapshots();
+  if (!snaps.length) return;
+
+  // For each quarter, take the LAST snapshot in that quarter as the "end of quarter" state
+  const byQ = {};
+  snaps.forEach(s => {
+    if (!s.statusCounts) return; // skip older snapshots without statusCounts
+    const q = quarterLabel(s.date);
+    // Later dates overwrite earlier ones &#8212; we want the last snapshot of each quarter
+    if (!byQ[q] || s.date > byQ[q].date) byQ[q] = { date: s.date, counts: s.statusCounts };
+  });
+
+  const quarters = Object.keys(byQ).sort();
+  if (quarters.length === 0) {
+    // No statusCounts yet &#8212; show a placeholder message
+    const ctx = document.getElementById('chart-wip').getContext('2d');
+    ctx.font = '13px sans-serif';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'center';
+    ctx.fillText('WIP data will populate from tomorrow\'s snapshot onwards', ctx.canvas.width / 2, 60);
+    return;
+  }
+
+  const WIP_PHASE_ORDER = [
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+    'General Availability',
+    'Not Started',
+    'Blocked',
+    'Waiting For Customer / 3rd Party',
+    'Waiting For Additional Info',
+    'Waiting/Blocked',
+  ];
+
+  const presentPhases = WIP_PHASE_ORDER.filter(ph =>
+    quarters.some(q => (byQ[q].counts[ph] || 0) > 0)
+  );
+
+  const datasets = presentPhases.map(ph => ({
+    label: THROUGHPUT_SHORT[ph] || ph,
+    data: quarters.map(q => byQ[q].counts[ph] || 0),
+    backgroundColor: (THROUGHPUT_COLORS[ph] || '#8b949e') + '99',
+    borderColor: THROUGHPUT_COLORS[ph] || '#8b949e',
+    borderWidth: 1,
+    stack: 'wip',
+    borderRadius: 2,
+  }));
+
+  const ctx = document.getElementById('chart-wip').getContext('2d');
+  if (wipChart) wipChart.destroy();
+  wipChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: quarters, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 12,
+            filter: (item, data) => data.datasets[item.datasetIndex].data.some(v => v > 0)
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.dataset.label}: ${c.parsed.y} ticket${c.parsed.y !== 1 ? 's' : ''}`,
+            footer: items => `Total: ${items.reduce((s,i) => s + i.parsed.y, 0)} tickets`
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#e6edf3', font: { size: 12, weight: '600' } } },
+        y: { stacked: true, grid: { color: 'rgba(48,54,61,0.6)' }, ticks: { color: '#8b949e', font: { size: 11 }, stepSize: 1 }, beginAtZero: true,
+             title: { display: true, text: 'Tickets in portfolio', color: '#8b949e', font: { size: 11 } } }
       }
     }
   });
