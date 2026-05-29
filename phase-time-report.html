@@ -514,6 +514,7 @@ const PHASE_COLS = [
   "Phase 5: AIA Integration",
   "Phase 6: AP Integration",
   "Phase 7: Beta",
+  "General Availability",
   "Blocked",
   "Waiting For Customer / 3rd Party",
   "Waiting For Additional Info",
@@ -1645,6 +1646,7 @@ function buildGateTimeChart() {
     'Phase 5: AIA Integration',
     'Phase 6: AP Integration',
     'Phase 7: Beta',
+    'General Availability',
   ];
   const PHASE_LABELS = [
     'Ph 1: Alignment',
@@ -1654,6 +1656,7 @@ function buildGateTimeChart() {
     'Ph 5: AIA',
     'Ph 6: AP',
     'Ph 7: Beta ✓',
+    'GA ✓',
   ];
   const tickets = RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i));
 
@@ -1681,7 +1684,7 @@ function buildGateTimeChart() {
 
   const ctx = document.getElementById('chart-gate-time').getContext('2d');
   if (gateTimeChart) gateTimeChart.destroy();
-  const colors = ['#58a6ff','#3fb950','#f0883e','#e3b341','#bc8cff','#ff7b72','#39d353'];
+  const colors = ['#58a6ff','#3fb950','#f0883e','#e3b341','#bc8cff','#ff7b72','#39d353','#39d353'];
   gateTimeChart = new Chart(ctx, {
     type: 'bar',
     data: {
