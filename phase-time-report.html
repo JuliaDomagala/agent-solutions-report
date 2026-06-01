@@ -1035,48 +1035,85 @@ function buildOKRProgressChart() {
   if (!ctx) return;
   if (window._okrProgressChart) { try { window._okrProgressChart.destroy(); } catch(e){} }
 
-  // Chart: 4 groups &#8212; Ph1, Ph2, Ph3, Blocked/Waiting
-  // Each group: Q1 stacked (active, lighter blocked) and Q2 stacked (active, lighter blocked)
-  const labels = ['Ph1: Alignment', 'Ph2: Build & Validation', 'Ph3: External Testing', 'Blocked & Waiting'];
+  // Chart: two stacked bars (Q1 baseline, Q2 current), each split into active + blocked/waiting
+  // Plus a flat dashed target line at Q1 total * 0.7
+  const quarters = [];
+  const activeData = [];
+  const blockedData = [];
 
-  const bActive = [...(base.perPhaseActive || [null,null,null]), null];
-  const bBlocked = [null, null, null, base.blockedAvg];
-  const cActive = [...(curr.perPhaseActive || [null,null,null]), null];
-  const cBlocked = [null, null, null, curr.blockedAvg];
-  const targetLine = [
-    base.perPhaseActive?.[0] != null ? Math.round(base.perPhaseActive[0]*0.7*10)/10 : null,
-    base.perPhaseActive?.[1] != null ? Math.round(base.perPhaseActive[1]*0.7*10)/10 : null,
-    base.perPhaseActive?.[2] != null ? Math.round(base.perPhaseActive[2]*0.7*10)/10 : null,
-    base.blockedAvg != null ? Math.round(base.blockedAvg*0.7*10)/10 : null,
-  ];
+  if (base.n > 0) {
+    quarters.push((prevQ || 'Q1 2026') + ' (n=' + base.n + ')');
+    activeData.push(base.activeTotal);
+    blockedData.push(base.blockedAvg);
+  }
+  if (curr.n > 0) {
+    quarters.push((currentQ || 'Q2 2026') + ' (n=' + curr.n + ')');
+    activeData.push(curr.activeTotal);
+    blockedData.push(curr.blockedAvg);
+  }
 
-  const cActiveColors = (curr.perPhaseActive || [null,null,null]).map((v,i) => {
-    const b = base.perPhaseActive?.[i];
-    if (v==null||b==null) return 'rgba(86,211,100,0.7)';
-    return v <= b*0.7 ? 'rgba(86,211,100,0.9)' : v < b ? 'rgba(86,211,100,0.6)' : 'rgba(248,81,73,0.7)';
-  });
-  cActiveColors.push('rgba(248,81,73,0.15)'); // blocked group placeholder
+  const flatTarget = quarters.map(() => target);
+  const q2TotalColor = cTotal > 0 && bTotal > 0
+    ? (cTotal <= target ? '#56d364' : cTotal < bTotal ? '#e3b341' : '#f85149')
+    : '#58a6ff';
 
   window._okrProgressChart = new Chart(ctx, {
     data: {
-      labels,
+      labels: quarters,
       datasets: [
-        { type:'bar', label: (prevQ||'Baseline')+' active', data: bActive, backgroundColor:'rgba(88,166,255,0.65)', borderColor:'#58a6ff', borderWidth:1, stack:'base' },
-        { type:'bar', label: (prevQ||'Baseline')+' blocked/waiting', data: bBlocked, backgroundColor:'rgba(248,81,73,0.55)', borderColor:'#f85149', borderWidth:1, stack:'base' },
-        { type:'bar', label: (currentQ||'Current')+' active', data: cActive, backgroundColor: cActiveColors, borderWidth:1, stack:'curr' },
-        { type:'bar', label: (currentQ||'Current')+' blocked/waiting', data: cBlocked, backgroundColor:'rgba(248,81,73,0.4)', borderColor:'rgba(248,81,73,0.8)', borderWidth:1, stack:'curr' },
-        { type:'line', label:'Target (&#8722;30%)', data: targetLine, borderColor:'#e3b341', borderDash:[5,3], borderWidth:2, pointRadius:5, pointBackgroundColor:'#e3b341', fill:false, tension:0 },
+        {
+          type: 'bar',
+          label: 'Active (Ph1&#8211;3)',
+          data: activeData,
+          backgroundColor: quarters.map((_, i) => i === 0 ? 'rgba(88,166,255,0.7)' : 'rgba(86,211,100,0.7)'),
+          borderColor: quarters.map((_, i) => i === 0 ? '#58a6ff' : '#56d364'),
+          borderWidth: 1,
+          stack: 'total',
+        },
+        {
+          type: 'bar',
+          label: 'Blocked / Waiting',
+          data: blockedData,
+          backgroundColor: 'rgba(248,81,73,0.5)',
+          borderColor: '#f85149',
+          borderWidth: 1,
+          stack: 'total',
+        },
+        {
+          type: 'line',
+          label: 'Target (&#8722;30%): ' + target + 'bd',
+          data: flatTarget,
+          borderColor: '#e3b341',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+        },
       ]
     },
     options: {
-      responsive:true, maintainAspectRatio:true,
+      responsive: true,
+      maintainAspectRatio: true,
       plugins: {
-        legend:{ labels:{ color:'#e6edf3', font:{size:11}, boxWidth:12 } },
-        tooltip:{ callbacks:{ label: c => c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+'bd':'no data') } }
+        legend: { labels: { color: '#e6edf3', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: c => c.dataset.label + ': ' + (c.parsed.y != null ? c.parsed.y + 'bd' : 'no data'),
+            afterBody: items => {
+              if (items.length && items[0].datasetIndex <= 1) {
+                const idx = items[0].dataIndex;
+                const total = (activeData[idx] || 0) + (blockedData[idx] || 0);
+                return ['Total: ' + Math.round(total * 10) / 10 + 'bd'];
+              }
+              return [];
+            }
+          }
+        }
       },
       scales: {
-        x:{ ticks:{color:'#8b949e',font:{size:11}}, grid:{color:'rgba(139,148,158,0.12)'} },
-        y:{ beginAtZero:true, stacked:false, ticks:{color:'#8b949e',font:{size:11},callback:v=>v+'bd'}, grid:{color:'rgba(139,148,158,0.12)'} }
+        x: { stacked: true, ticks: { color: '#8b949e', font: { size: 12 } }, grid: { color: 'rgba(139,148,158,0.12)' } },
+        y: { beginAtZero: true, stacked: true, ticks: { color: '#8b949e', font: { size: 11 }, callback: v => v + 'bd' }, grid: { color: 'rgba(139,148,158,0.12)' } }
       }
     }
   });
