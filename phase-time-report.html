@@ -174,6 +174,7 @@
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="new-workflow">New Workflows <span class="badge" id="badge-new-workflow"></span></button>
   <button class="tab-btn" data-tab="prod">Prod <span class="badge" id="badge-prod"></span></button>
+  <button class="tab-btn" data-tab="customer-pilot">Customer Pilot <span class="badge" id="badge-customer-pilot"></span></button>
   <button class="tab-btn" data-tab="trends">&#128200; Trends <span class="badge" id="badge-trends"></span></button>
   <button class="tab-btn" data-tab="methodology">&#128208; How it's calculated</button>
 </div>
@@ -230,6 +231,7 @@
     <select id="trends-filter-type">
       <option value="all">All</option>
       <option value="new-workflow" selected>New Workflows</option>
+      <option value="customer-pilot">Customer Pilot</option>
       <option value="prod">Prod</option>
     </select>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-muted);margin-left:8px;">
@@ -489,6 +491,7 @@ window.onerror = function(msg, src, line, col, err) {
 
 const PROD_KEYS = new Set(["PROMPT-62","PROMPT-61","PROMPT-60","PROMPT-51","PROMPT-49","PROMPT-52","PROMPT-50"]);
 const NEW_WF_KEYS = new Set(["PROMPT-5","PROMPT-22","PROMPT-42","PROMPT-40","PROMPT-56","PROMPT-55","PROMPT-54","PROMPT-25","PROMPT-39","PROMPT-57","PROMPT-20","PROMPT-32","PROMPT-59","PROMPT-58","PROMPT-36","PROMPT-41","PROMPT-33","PROMPT-31","PROMPT-28","PROMPT-48","PROMPT-29","PROMPT-30","PROMPT-24","PROMPT-26","PROMPT-53","PROMPT-23","PROMPT-19","PROMPT-18","PROMPT-17","PROMPT-16","PROMPT-15","PROMPT-14","PROMPT-13","PROMPT-12","PROMPT-11","PROMPT-10","PROMPT-9","PROMPT-8","PROMPT-7","PROMPT-6","PROMPT-4","PROMPT-3","PROMPT-2","PROMPT-1","PROMPT-46","PROMPT-45","PROMPT-47","PROMPT-44","PROMPT-34"]);
+const CUSTOMER_PILOT_KEYS = new Set([]); // injected daily by scheduled task
 
 let activeTab = 'new-workflow';
 
@@ -949,6 +952,7 @@ function saveTodaySnapshot() {
     all: computeSnapshot(RAW),
     'new-workflow': computeSnapshot(RAW.filter(i => NEW_WF_KEYS.has(i.k))),
     prod: computeSnapshot(RAW.filter(i => PROD_KEYS.has(i.k))),
+    'customer-pilot': computeSnapshot(RAW.filter(i => CUSTOMER_PILOT_KEYS.has(i.k))),
   };
   const snaps = saveSnapshot(snap);
   const notice = document.getElementById('snapshot-notice');
@@ -2157,6 +2161,7 @@ function updateBadges() {
   try {
     const nw = document.getElementById('badge-new-workflow'); if (nw) nw.textContent = RAW.filter(i => NEW_WF_KEYS.has(i.k)).length;
     const p = document.getElementById('badge-prod'); if (p) p.textContent = RAW.filter(i => PROD_KEYS.has(i.k)).length;
+    const cp = document.getElementById('badge-customer-pilot'); if (cp) cp.textContent = RAW.filter(i => CUSTOMER_PILOT_KEYS.has(i.k)).length;
   } catch(e) { console.warn('updateBadges error:', e); }
 }
 updateBadges();
@@ -2167,6 +2172,7 @@ let currentRows = [...RAW];
 function tabFilteredBase() {
   if (activeTab === 'new-workflow') return RAW.filter(i => NEW_WF_KEYS.has(i.k));
   if (activeTab === 'prod') return RAW.filter(i => PROD_KEYS.has(i.k));
+  if (activeTab === 'customer-pilot') return RAW.filter(i => CUSTOMER_PILOT_KEYS.has(i.k));
   return RAW.filter(i => NEW_WF_KEYS.has(i.k)); // default to new-workflow
 }
 
