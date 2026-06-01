@@ -944,42 +944,6 @@ function saveTodaySnapshot() {
 
 let flowChart = null, phaseChart = null;
 
-// &#9472;&#9472; OKR 6.3 tracker &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;
-function renderOKR(snaps) {
-  const card = document.getElementById('okr-card');
-  // Only show for new-workflow (OKR is team active time)
-  const nwSnaps = snaps.filter(s => s['new-workflow']?.flowTime != null);
-  if (nwSnaps.length === 0) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-
-  // Baseline = average active flowTime across Q1 2026 snapshots (Feb&#8211;Apr)
-  const q1Snaps = nwSnaps.filter(s => quarterLabel(s.date) === 'Q1 2026');
-  const q1Vals = q1Snaps.map(s => s['new-workflow'].flowTime).filter(v => v != null);
-  const baseline = q1Vals.length > 0 ? Math.round(q1Vals.reduce((a,b)=>a+b,0)/q1Vals.length*10)/10 : null;
-  const target = baseline != null ? Math.round(baseline * 0.70 * 10) / 10 : null;
-
-  // Current = latest week's active flowTime
-  const current = nwSnaps[nwSnaps.length - 1]['new-workflow'].flowTime;
-
-  document.getElementById('okr-baseline').textContent = baseline != null ? baseline + ' bd' : '\u2014';
-  document.getElementById('okr-target').textContent = target != null ? '\u2264 ' + target + ' bd' : '\u2014';
-
-  const el = document.getElementById('okr-current');
-  el.textContent = current != null ? current + ' bd' : '\u2014';
-
-  if (baseline != null && current != null) {
-    const reductionPct = Math.round((baseline - current) / baseline * 100);
-    const progressPct = Math.max(0, Math.min(100, Math.round(reductionPct / 30 * 100)));
-    const progEl = document.getElementById('okr-progress');
-    progEl.textContent = reductionPct > 0 ? '\u2212' + reductionPct + '%' : '+' + Math.abs(reductionPct) + '%';
-    progEl.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 0 ? 'var(--yellow)' : 'var(--red)';
-    el.style.color = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--text)';
-    document.getElementById('okr-bar').style.width = progressPct + '%';
-    document.getElementById('okr-bar').style.background = reductionPct >= 30 ? 'var(--green)' : reductionPct > 10 ? 'var(--yellow)' : 'var(--accent)';
-    document.getElementById('okr-bar-label').textContent = progressPct + '% of 30% goal achieved';
-  }
-  return { baseline, target };
-}
 
 // Return the quarter label for the quarter before a given quarter label
 function prevQuarterLabel(qLabel) {
@@ -1126,7 +1090,7 @@ function renderTrends(typeFilter) {
   trendsEmpty.style.display = 'none';
 
   const key = typeFilter || 'new-workflow';
-  const okrData = renderOKR(snaps);
+  const okrData = null; // OKR card removed; target line derived from buildOKRProgressChart if needed
   const excludeBlocked = document.getElementById('trends-exclude-blocked').checked;
   const BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","Not Started"]);
   const activePhasesOnly = TREND_PHASES.filter(p => !BLOCKED_PHASES.has(p));
