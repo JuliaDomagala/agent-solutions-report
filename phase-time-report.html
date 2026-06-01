@@ -729,7 +729,7 @@ let sortCol = 'total', sortDir = -1;
 const EXCLUDE_FROM_AVG = new Set(["Julia Domagala","Julia"]);
 
 // Helper: exclude DUMMY and TEST tickets from all chart calculations
-const isRealTicket = i => !/\b(dummy|test)\b/i.test(i.s || '');
+const isRealTicket = i => (i.k && i.k.startsWith('PROMPT-')) && !/\b(dummy|test)\b/i.test(i.s || '');
 
 const TABLE_BLOCKED_PHASES = new Set(["Blocked","Waiting For Customer / 3rd Party","Waiting For Additional Info","In Review","Open","In Progress"]);
 
@@ -904,7 +904,7 @@ function saveSnapshot(snap) {
 // Populate quarter + month dropdowns from RAW data
 (function() {
   const quarters = new Set(), months = new Set();
-  RAW.forEach(i => {
+  RAW.filter(i => i.k && i.k.startsWith('PROMPT-')).forEach(i => {
     if (!i.cr) return;
     const d = new Date(i.cr + 'T12:00:00');
     // P44 fiscal quarters: Q1=Feb-Apr, Q2=May-Jul, Q3=Aug-Oct, Q4=Nov-Jan
