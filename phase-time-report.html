@@ -651,17 +651,6 @@ function buildCards(rows) {
   const container = document.getElementById('phase-cards');
   container.innerHTML = '';
 
-  // Compute current-Q and prev-Q trend for each phase (when no manual filter active)
-  const today = new Date().toISOString().slice(0,10);
-  const cQ = quarterLabel(today);
-  const pQ = prevQuarterLabel(cQ);
-  let prevQAvgs = null;
-  let currQAvgs = null;
-  if (!quarterFilter && pQ) {
-    prevQAvgs = computeAverages(rows, pQ);
-    currQAvgs = computeAverages(rows, cQ);
-  }
-
   avgs.filter(a => a.totalCount > 0).forEach((a, idx) => {
     const color = CARD_COLORS[a.phase] || '#8b949e';
     const pct = Math.round(((a.avg || 0) / maxAvg) * 100);
@@ -669,29 +658,13 @@ function buildCards(rows) {
       ? `${a.totalCount} ticket${a.totalCount !== 1 ? 's' : ''} in ${quarterFilter}`
       : `${a.totalCount} ticket${a.totalCount !== 1 ? 's' : ''}`;
 
-    // Trend indicator vs previous quarter
-    let trendHtml = '';
-    if (!quarterFilter && prevQAvgs && currQAvgs) {
-      const cAvg = currQAvgs.find(x => x.phase === a.phase)?.avg;
-      const pAvg = prevQAvgs.find(x => x.phase === a.phase)?.avg;
-      if (cAvg != null && pAvg != null && pAvg > 0) {
-        const pct2 = Math.round((cAvg - pAvg) / pAvg * 100);
-        const arrow = pct2 < 0 ? '&#9660;' : '&#9650;';
-        const tc = pct2 < 0 ? '#56d364' : '#f85149';
-        trendHtml = `<span style="font-size:10px;color:${tc};font-weight:600;margin-left:6px;">${arrow}${Math.abs(pct2)}% vs ${pQ}</span>`;
-      }
-    }
-
     container.innerHTML += `
       <div class="card" style="cursor:pointer;" onclick="showPhaseTickets(${idx}, this)" data-phase-idx="${idx}">
         <div class="phase-name">${a.phase}</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px;">
           <div style="font-size:10px;color:var(--text-muted);">${label}</div>
-          <div style="display:flex;align-items:baseline;gap:0;">
-            <div style="font-size:22px;font-weight:700;color:${color};">${a.avg != null ? a.avg + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div>
-          </div>
+          <div style="font-size:22px;font-weight:700;color:${color};">${a.avg != null ? a.avg + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div>
         </div>
-        ${trendHtml ? `<div style="margin-top:2px;">${trendHtml}</div>` : ''}
         <div class="bar-wrap" style="margin-top:6px;"><div class="bar-fill" style="width:${pct}%;background:${color};opacity:0.8;"></div></div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">avg across all tickets that entered &#183; click for details</div>
       </div>`;
