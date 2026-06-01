@@ -302,11 +302,6 @@
       <div class="chart-sub">Quarterly averages across all weekly snapshots &#183; Falling bars = time savings &#183; <span style="color:#e3b341;font-style:italic;">&#9888; Q1 2026 (Feb&#8211;Apr) = first batch of workflows, some carried over mid-flight &#8212; treat as baseline. Q2 2026 onwards = fresh quarterly roadmap, full phase 1&#8594;5 journeys.</span></div>
       <canvas id="chart-qoq" style="max-height:320px;"></canvas>
     </div>
-    <div class="chart-card" style="grid-column:1/-1;">
-      <h3>Agent Solutions Handoffs &#8212; Tickets Reaching Ready for Development per Quarter</h3>
-      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counted in the quarter they first entered <strong style="color:var(--green)">Phase 4: Ready for Development</strong> &#8212; this is when the Agent Solutions team's build work is done &#183; Stacked by where each ticket sits today &#183; Engineering may pick up in a later quarter</div>
-      <canvas id="chart-throughput" style="max-height:340px;"></canvas>
-    </div>
     <div class="chart-card">
       <h3>Pipeline Intake &#8212; Tickets Entering Dev Ready per Quarter</h3>
       <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Counts tickets that reached <strong>Phase 4: Ready for Development</strong> &#183; Grouped by the quarter they first entered Ph4 &#183; Rising bars = more builds handed to engineering</div>
@@ -332,6 +327,11 @@
       <h3>Velocity Story &#8212; Completions Up, Flow Time Down</h3>
       <div class="chart-sub">Dark green bars: tickets handed to engineering (reached Ph4) per quarter &#8212; Agent Solutions' output &#183; Light green bars: tickets that shipped (Beta/GA) per quarter &#8212; may lag by a quarter or more &#183; Lines (right axis): flow time and time-to-Ph4 trends &#183; Rising bars + falling lines = team is handing off more and building faster</div>
       <canvas id="chart-velocity" style="max-height:320px;"></canvas>
+    </div>
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>Portfolio State at End of Each Quarter</h3>
+      <div class="chart-sub">New workflow tickets (PROMPT) only &#183; Shows where every active ticket stood at the end of each completed quarter, reconstructed from Jira changelog data &#183; Current quarter shows today&#8217;s live state &#183; A static record &#8212; completed quarters never change</div>
+      <canvas id="chart-throughput" style="max-height:340px;"></canvas>
     </div>
   </div>
 </div>
@@ -1304,7 +1304,7 @@ const THROUGHPUT_COLORS = {
   'Phase 5: AIA Integration':                   '#a371f7',
   'Phase 6: AP Integration':                    '#58a6ff',
   'Phase 7: Beta':                              '#39d353',
-  'General Availability':                       '#39d353',
+  'General Availability':                       '#ffd700',
   'Blocked':                                    '#f85149',
   'Waiting For Customer / 3rd Party':           '#c9862a',
   'Waiting For Additional Info':                '#c9862a',
@@ -1347,29 +1347,62 @@ function hasReachedPhase(t, ph) {
 }
 
 function buildThroughputChart() {
-  // Agent Solutions Handoffs &#8212; PROMPT tickets that reached Ph4: Ready for Development
-  // Counted in the quarter they FIRST entered Ph4 (pe['Phase 4'] if available, else lt as proxy)
-  // Stacked by where the ticket sits TODAY &#8212; shows that Q2 handoffs may still be in eng pipeline
-  const PH4 = 'Phase 4: Ready for Development';
-  const tickets = RAW.filter(i => {
-    if (!NEW_WF_KEYS.has(i.k) || !isRealTicket(i)) return false;
-    return hasReachedPhase(i, PH4);
+  // Portfolio State at End of Each Quarter
+  // For each quarter, reconstruct where every active new-workflow ticket was standing
+  // at the end of that quarter using pe (phase entry dates).
+  // Current/incomplete quarter uses today's live status.
+  const tickets = RAW.filter(i => NEW_WF_KEYS.has(i.k) && isRealTicket(i));
+
+  // Quarter end dates (last day of quarter)
+  const QUARTER_ENDS = {
+    'Q1 2026': '2026-04-30',
+    'Q2 2026': '2026-07-31',
+    'Q3 2026': '2026-10-31',
+    'Q4 2026': '2027-01-31',
+  };
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Determine which quarters have any tickets
+  const allQuarters = Object.keys(QUARTER_ENDS).filter(q => {
+    const qEnd = QUARTER_ENDS[q];
+    // Quarter is relevant if it has started (some ticket created by quarter end)
+    return tickets.some(t => t.cr <= qEnd);
   });
 
-  // Quarter = when the ticket first entered Ph4
+  // For each ticket, determine its status at the end of a given quarter date
+  function statusAtDate(t, dateStr) {
+    if (t.cr > dateStr) return null; // ticket didn't exist yet
+    if (!t.pe || Object.keys(t.pe).length <= 1) return t.c; // no pe data, use current
+    // Find the latest phase the ticket entered on or before dateStr
+    let latestDate = '';
+    let latestPhase = 'Not Started';
+    Object.entries(t.pe).forEach(([phase, entryDate]) => {
+      if (entryDate <= dateStr && entryDate >= latestDate) {
+        latestDate = entryDate;
+        latestPhase = phase;
+      }
+    });
+    return latestPhase;
+  }
+
   const byQ = {};
-  tickets.forEach(t => {
-    const dateStr = (t.pe && t.pe[PH4]) ? t.pe[PH4] : (t.lt || t.cr);
-    if (!dateStr) return;
-    const q = quarterLabel(dateStr);
-    if (!byQ[q]) byQ[q] = {};
-    // Stack by current status to show where handoffs ended up
-    const phase = t.c || 'Not Started';
-    byQ[q][phase] = (byQ[q][phase] || 0) + 1;
+  allQuarters.forEach(q => {
+    const qEnd = QUARTER_ENDS[q] < today ? QUARTER_ENDS[q] : today;
+    byQ[q] = {};
+    tickets.forEach(t => {
+      const status = statusAtDate(t, qEnd);
+      if (!status) return;
+      byQ[q][status] = (byQ[q][status] || 0) + 1;
+    });
   });
 
   const quarters = Object.keys(byQ).sort();
   if (quarters.length === 0) return;
+
+  // Label current (incomplete) quarter with "(current)"
+  const quarterLabelsDisplay = quarters.map(q =>
+    QUARTER_ENDS[q] >= today ? q + ' (current)' : q
+  );
 
   // Collect only phases that appear in the data
   const presentPhases = THROUGHPUT_PHASE_ORDER.filter(ph =>
@@ -1389,7 +1422,7 @@ function buildThroughputChart() {
   if (throughputChart) throughputChart.destroy();
   throughputChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: quarters, datasets },
+    data: { labels: quarterLabelsDisplay, datasets },
     options: {
       responsive: true,
       plugins: {
