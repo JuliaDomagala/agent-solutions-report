@@ -1328,6 +1328,24 @@ const THROUGHPUT_SHORT = {
   'Not Started':                                'Not Started',
 };
 
+// Returns true if ticket has ever reached (or passed through) a given workflow phase.
+// Handles Blocked/Waiting tickets where WORKFLOW_PHASE_ORDER.indexOf(t.c) === -1.
+function hasReachedPhase(t, ph) {
+  if ((t.p[ph] || 0) > 0) return true;           // spent time there
+  if (t.pe && t.pe[ph]) return true;              // has entry date
+  if (t.c === ph) return true;                    // currently there
+  const phIdx = WORKFLOW_PHASE_ORDER.indexOf(ph);
+  const curIdx = WORKFLOW_PHASE_ORDER.indexOf(t.c);
+  if (curIdx > phIdx && phIdx >= 0) return true;  // workflow status is past it
+  if (curIdx === -1 && phIdx >= 0) {              // non-workflow status: check if any later phase was entered
+    for (let j = phIdx; j < WORKFLOW_PHASE_ORDER.length; j++) {
+      const later = WORKFLOW_PHASE_ORDER[j];
+      if ((t.p[later] || 0) > 0 || (t.pe && t.pe[later])) return true;
+    }
+  }
+  return false;
+}
+
 function buildThroughputChart() {
   // Agent Solutions Handoffs &#8212; PROMPT tickets that reached Ph4: Ready for Development
   // Counted in the quarter they FIRST entered Ph4 (pe['Phase 4'] if available, else lt as proxy)
@@ -1335,16 +1353,7 @@ function buildThroughputChart() {
   const PH4 = 'Phase 4: Ready for Development';
   const tickets = RAW.filter(i => {
     if (!NEW_WF_KEYS.has(i.k) || !isRealTicket(i)) return false;
-    // Has reached Ph4: either spent time there, currently there, or is in a later phase
-    if ((i.p[PH4] || 0) > 0) return true;
-    if (i.c === PH4) return true;
-    const curIdx = WORKFLOW_PHASE_ORDER.indexOf(i.c);
-    const ph4Idx = WORKFLOW_PHASE_ORDER.indexOf(PH4);
-    if (curIdx > ph4Idx) return true;
-    // Also include tickets that have spent time in any phase beyond Ph4
-    // (e.g. now Blocked but previously reached Ph5/Ph6/Ph7)
-    const beyondPh4 = ['Phase 5: AIA Integration', 'Phase 6: AP Integration', 'Phase 7: Beta', 'General Availability'];
-    return beyondPh4.some(ph => (i.p[ph] || 0) > 0);
+    return hasReachedPhase(i, PH4);
   });
 
   // Quarter = when the ticket first entered Ph4
@@ -1763,9 +1772,7 @@ function buildVelocityChart() {
   const PH4_VEL = 'Phase 4: Ready for Development';
   const handoffsByQ = {};
   RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i)).forEach(t => {
-    const hasPh4 = (t.p[PH4_VEL]||0) > 0 || t.c === PH4_VEL ||
-      WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4_VEL);
-    if (!hasPh4) return;
+    if (!hasReachedPhase(t, PH4_VEL)) return;
     const dateStr = (t.pe && t.pe[PH4_VEL]) ? t.pe[PH4_VEL] : (t.lt || t.cr);
     const q = quarterLabel(dateStr);
     handoffsByQ[q] = (handoffsByQ[q] || 0) + 1;
@@ -1795,9 +1802,7 @@ function buildVelocityChart() {
 
   RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i)).forEach(t => {
     // Has the ticket reached Ph4?
-    const hasPh4 = (t.p[PH4] || 0) > 0 || t.c === PH4 ||
-      WORKFLOW_PHASE_ORDER.indexOf(t.c) > WORKFLOW_PHASE_ORDER.indexOf(PH4);
-    if (!hasPh4) return;
+    if (!hasReachedPhase(t, PH4)) return;
 
     // Quarter this ticket entered Ph4
     const ph4EntryDate = (t.pe && t.pe[PH4]) ? t.pe[PH4] : (t.lt || t.cr);
