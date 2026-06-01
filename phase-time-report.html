@@ -279,6 +279,12 @@
     <div style="margin-top:8px;font-size:12px;">Today's snapshot has been saved. Come back tomorrow to start seeing trends.</div>
   </div>
   <div class="trends-grid" id="trends-grid">
+    <div class="chart-card" style="grid-column:1/-1;">
+      <h3>OKR 6.3 &#8212; Phase Time Reduction: Q1 vs Q2 2026</h3>
+      <div class="chart-sub">New workflow tickets only &#183; Bars show average business days per phase &#183; <span style="color:#58a6ff;">&#9646;</span> Q1 baseline &#183; <span style="color:#56d364;">&#9646;</span> Q2 current (green = improved, red = regressed) &#183; <span style="color:#e3b341;">&#8212; &#8212;</span> 30% reduction target &#183; OKR target: end of Q2 FY27 (Jul 2026)</div>
+      <div id="okr-headline" style="margin-bottom:16px;"></div>
+      <canvas id="chart-okr-progress" style="max-height:340px;"></canvas>
+    </div>
     <div class="chart-card">
       <h3>Phase 1 &#8594; Phase 5 Flow Time</h3>
       <div class="chart-sub">Blue = calendar time including blocked/waiting gaps &#183; Green dashed = active phase time only (Ph1&#8211;5). Gap between lines = time lost to blockers. <span style="color:#e3b341;font-style:italic;">&#9888; Early weeks (Mar&#8211;Apr) reflect Jira migration backfill &#8212; treat as indicative.</span></div>
@@ -645,6 +651,17 @@ function buildCards(rows) {
   const container = document.getElementById('phase-cards');
   container.innerHTML = '';
 
+  // Compute current-Q and prev-Q trend for each phase (when no manual filter active)
+  const today = new Date().toISOString().slice(0,10);
+  const cQ = quarterLabel(today);
+  const pQ = prevQuarterLabel(cQ);
+  let prevQAvgs = null;
+  let currQAvgs = null;
+  if (!quarterFilter && pQ) {
+    prevQAvgs = computeAverages(rows, pQ);
+    currQAvgs = computeAverages(rows, cQ);
+  }
+
   avgs.filter(a => a.totalCount > 0).forEach((a, idx) => {
     const color = CARD_COLORS[a.phase] || '#8b949e';
     const pct = Math.round(((a.avg || 0) / maxAvg) * 100);
@@ -652,13 +669,29 @@ function buildCards(rows) {
       ? `${a.totalCount} ticket${a.totalCount !== 1 ? 's' : ''} in ${quarterFilter}`
       : `${a.totalCount} ticket${a.totalCount !== 1 ? 's' : ''}`;
 
+    // Trend indicator vs previous quarter
+    let trendHtml = '';
+    if (!quarterFilter && prevQAvgs && currQAvgs) {
+      const cAvg = currQAvgs.find(x => x.phase === a.phase)?.avg;
+      const pAvg = prevQAvgs.find(x => x.phase === a.phase)?.avg;
+      if (cAvg != null && pAvg != null && pAvg > 0) {
+        const pct2 = Math.round((cAvg - pAvg) / pAvg * 100);
+        const arrow = pct2 < 0 ? '&#9660;' : '&#9650;';
+        const tc = pct2 < 0 ? '#56d364' : '#f85149';
+        trendHtml = `<span style="font-size:10px;color:${tc};font-weight:600;margin-left:6px;">${arrow}${Math.abs(pct2)}% vs ${pQ}</span>`;
+      }
+    }
+
     container.innerHTML += `
       <div class="card" style="cursor:pointer;" onclick="showPhaseTickets(${idx}, this)" data-phase-idx="${idx}">
         <div class="phase-name">${a.phase}</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px;">
           <div style="font-size:10px;color:var(--text-muted);">${label}</div>
-          <div style="font-size:22px;font-weight:700;color:${color};">${a.avg != null ? a.avg + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div>
+          <div style="display:flex;align-items:baseline;gap:0;">
+            <div style="font-size:22px;font-weight:700;color:${color};">${a.avg != null ? a.avg + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div>
+          </div>
         </div>
+        ${trendHtml ? `<div style="margin-top:2px;">${trendHtml}</div>` : ''}
         <div class="bar-wrap" style="margin-top:6px;"><div class="bar-fill" style="width:${pct}%;background:${color};opacity:0.8;"></div></div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">avg across all tickets that entered &#183; click for details</div>
       </div>`;
@@ -994,6 +1027,116 @@ function renderOKR(snaps) {
   return { baseline, target };
 }
 
+// Return the quarter label for the quarter before a given quarter label
+function prevQuarterLabel(qLabel) {
+  if (!qLabel) return null;
+  const m = qLabel.match(/Q(\d) (\d{4})/);
+  if (!m) return null;
+  let qn = parseInt(m[1]), yr = parseInt(m[2]);
+  qn--; if (qn < 1) { qn = 4; yr--; }
+  return 'Q' + qn + ' ' + yr;
+}
+
+// OKR 6.3 chart &#8212; Q1 vs Q2 per-phase comparison with 30% target line
+function buildOKRProgressChart() {
+  const nwRows = RAW.filter(i => isRealTicket(i) && NEW_WF_KEYS.has(i.k));
+  const today = new Date().toISOString().slice(0,10);
+  const currentQ = quarterLabel(today);
+  const prevQ = prevQuarterLabel(currentQ);
+
+  const WORKFLOW_PHASES = [
+    'Phase 1: Alignment & Requirements',
+    'Phase 2: Prompt Build & Internal Validation',
+    'Phase 3: External Testing',
+    'Phase 4: Ready for Development',
+    'Phase 5: AIA Integration',
+    'Phase 6: AP Integration',
+    'Phase 7: Beta',
+    'General Availability',
+  ];
+  const SHORT_LABELS = ['Ph1\nAlign','Ph2\nBuild','Ph3\nTest','Ph4\nDev Ready','Ph5\nAIA','Ph6\nAP','Ph7\nBeta','GA'];
+
+  const baselineAvgs = computeAverages(nwRows, prevQ);
+  const currentAvgs  = computeAverages(nwRows, currentQ);
+
+  const baselineData = [], currentData = [], targetData = [], barColors = [];
+  WORKFLOW_PHASES.forEach(ph => {
+    const b = baselineAvgs.find(a => a.phase === ph)?.avg ?? null;
+    const c = currentAvgs.find(a => a.phase === ph)?.avg ?? null;
+    baselineData.push(b);
+    currentData.push(c);
+    targetData.push(b != null ? Math.round(b * 0.7 * 10) / 10 : null);
+    // Green if at/below target, amber if improved but not at target, red if worse
+    if (c != null && b != null) {
+      barColors.push(c <= b * 0.7 ? 'rgba(86,211,100,0.85)' : c < b ? 'rgba(86,211,100,0.5)' : 'rgba(248,81,73,0.65)');
+    } else {
+      barColors.push('rgba(86,211,100,0.5)');
+    }
+  });
+
+  // Headline stats (workflow phases only, Ph1-5)
+  const WF5 = WORKFLOW_PHASES.slice(0, 5);
+  const bTotal = WF5.reduce((s, ph) => s + (baselineAvgs.find(a => a.phase === ph)?.avg || 0), 0);
+  const cTotal = WF5.reduce((s, ph) => s + (currentAvgs.find(a => a.phase === ph)?.avg || 0), 0);
+  const target = Math.round(bTotal * 0.7 * 10) / 10;
+  const reduction = bTotal > 0 ? (bTotal - cTotal) / bTotal : 0;
+  const progress = bTotal > 0 ? Math.min(100, Math.round((bTotal - cTotal) / (bTotal * 0.3) * 100)) : 0;
+  const hColor = progress >= 100 ? '#56d364' : progress >= 50 ? '#e3b341' : '#f85149';
+
+  const headline = document.getElementById('okr-headline');
+  if (headline) {
+    headline.innerHTML = `<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;align-items:center;">
+      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">${prevQ || 'Baseline'} (Ph1&#8211;5 sum)</div><div style="font-size:20px;font-weight:700;color:var(--text);">${bTotal > 0 ? bTotal.toFixed(1) + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
+      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">${currentQ} Current</div><div style="font-size:20px;font-weight:700;color:${hColor};">${cTotal > 0 ? cTotal.toFixed(1) + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
+      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Target (&#8722;30%)</div><div style="font-size:20px;font-weight:700;color:#e3b341;">${target > 0 ? target + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
+      <div style="flex:1;min-width:220px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Progress to 30% OKR &nbsp;<strong style="color:${hColor};">${progress}%</strong>${reduction > 0 ? ' &nbsp;(&#8722;' + Math.round(reduction*100) + '% so far)' : ''}</div>
+        <div style="background:var(--border);border-radius:4px;height:10px;overflow:hidden;"><div style="width:${progress}%;height:100%;background:${hColor};border-radius:4px;transition:width 0.5s;"></div></div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Target: end of Q2 FY27 (Jul 2026) &nbsp;&#183;&nbsp; Active build time only (Ph1&#8211;5)</div>
+      </div>
+    </div>`;
+  }
+
+  const ctx = document.getElementById('chart-okr-progress')?.getContext('2d');
+  if (!ctx) return;
+  if (window._okrProgressChart) { try { window._okrProgressChart.destroy(); } catch(e){} }
+
+  window._okrProgressChart = new Chart(ctx, {
+    data: {
+      labels: SHORT_LABELS,
+      datasets: [
+        {
+          type: 'bar', label: (prevQ || 'Baseline') + ' avg',
+          data: baselineData,
+          backgroundColor: 'rgba(88,166,255,0.55)', borderColor: '#58a6ff', borderWidth: 1,
+        },
+        {
+          type: 'bar', label: (currentQ || 'Current') + ' avg',
+          data: currentData,
+          backgroundColor: barColors, borderColor: barColors.map(c => c.replace('0.85','1').replace('0.5','0.8').replace('0.65','0.9')), borderWidth: 1,
+        },
+        {
+          type: 'line', label: 'Target (&#8722;30%)',
+          data: targetData,
+          borderColor: '#e3b341', borderDash: [5,3], borderWidth: 2,
+          pointRadius: 5, pointBackgroundColor: '#e3b341', fill: false, tension: 0,
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { labels: { color: '#e6edf3', font: { size: 11 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.parsed.y != null ? c.parsed.y + 'bd' : 'no data') } }
+      },
+      scales: {
+        x: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: 'rgba(139,148,158,0.12)' } },
+        y: { beginAtZero: true, ticks: { color: '#8b949e', font: { size: 11 }, callback: v => v + 'bd' }, grid: { color: 'rgba(139,148,158,0.12)' } }
+      }
+    }
+  });
+}
+
 function renderTrends(typeFilter) {
   const snaps = loadSnapshots();
   const trendsGrid = document.getElementById('trends-grid');
@@ -1109,6 +1252,9 @@ function renderTrends(typeFilter) {
       }
     }
   });
+
+  // OKR Progress chart
+  buildOKRProgressChart();
 
   // Chart 3: Quarter over Quarter
   renderQoQ(key);
