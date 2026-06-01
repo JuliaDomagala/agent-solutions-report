@@ -174,7 +174,6 @@
 <div class="tabs" id="tabs">
   <button class="tab-btn active" data-tab="new-workflow">New Workflows <span class="badge" id="badge-new-workflow"></span></button>
   <button class="tab-btn" data-tab="prod">Prod <span class="badge" id="badge-prod"></span></button>
-  <button class="tab-btn" data-tab="other">Other <span class="badge" id="badge-other"></span></button>
   <button class="tab-btn" data-tab="trends">&#128200; Trends <span class="badge" id="badge-trends"></span></button>
   <button class="tab-btn" data-tab="methodology">&#128208; How it's calculated</button>
 </div>
@@ -1978,7 +1977,6 @@ function updateBadges() {
   try {
     const nw = document.getElementById('badge-new-workflow'); if (nw) nw.textContent = RAW.filter(i => NEW_WF_KEYS.has(i.k)).length;
     const p = document.getElementById('badge-prod'); if (p) p.textContent = RAW.filter(i => PROD_KEYS.has(i.k)).length;
-    const o = document.getElementById('badge-other'); if (o) o.textContent = RAW.filter(i => !NEW_WF_KEYS.has(i.k) && !PROD_KEYS.has(i.k)).length;
   } catch(e) { console.warn('updateBadges error:', e); }
 }
 updateBadges();
@@ -1989,7 +1987,6 @@ let currentRows = [...RAW];
 function tabFilteredBase() {
   if (activeTab === 'new-workflow') return RAW.filter(i => NEW_WF_KEYS.has(i.k));
   if (activeTab === 'prod') return RAW.filter(i => PROD_KEYS.has(i.k));
-  if (activeTab === 'other') return RAW.filter(i => !NEW_WF_KEYS.has(i.k) && !PROD_KEYS.has(i.k));
   return RAW.filter(i => NEW_WF_KEYS.has(i.k)); // default to new-workflow
 }
 
