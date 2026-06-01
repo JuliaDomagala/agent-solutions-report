@@ -620,10 +620,15 @@ function computeAverages(rows, quarterFilter) {
       const v = issue.p[p] || 0;
       const wfIdx = WORKFLOW_PHASE_ORDER.indexOf(p);
       const isActive = issue.c === p;
-      // Ticket entered phase if: it's currently there, OR has a phase entry date, OR has recorded time
-      const entered = isActive || (issue.pe && issue.pe[p]) || v > 0;
-      // For workflow phases, also check if ticket has progressed past this phase
-      const isPassed = !isActive && entered && (wfIdx >= 0 ? curWfIdx > wfIdx : true);
+      // Ticket passed through this phase if it has recorded time OR a phase entry date
+      // When current status is non-workflow (Blocked, Waiting etc.), curWfIdx == -1 so we
+      // can't rely on index comparison &#8212; fall back to pe/time as proof of entry
+      const hasPhaseMark = v > 0 || (issue.pe && issue.pe[p]);
+      const isPassed = !isActive && hasPhaseMark && (
+        curWfIdx === -1 ? true :          // non-workflow status: trust pe/time
+        wfIdx >= 0 ? curWfIdx > wfIdx :   // workflow phase: must have moved past it
+        true                               // non-workflow phase column (Blocked etc.)
+      );
       if (!isActive && !isPassed) return;
 
       if (quarterFilter) {
