@@ -1673,21 +1673,27 @@ function buildGateTimeChart() {
     'Ph 4: Dev Ready',
     'Ph 5: AIA',
     'Ph 6: AP',
-    'Ph 7: Beta &#10003;',
-    'GA &#10003;',
+    'Ph 7: Beta \u2713',
+    'GA \u2713',
   ];
   const tickets = RAW.filter(i => i.k && NEW_WF_KEYS.has(i.k) && isRealTicket(i));
 
   // For each phase, compute the avg cumulative days from creation to reaching it
-  // "reached phase N" means the ticket has spent time in phases 0..N or is in phase N or beyond
+  // "reached phase N" means the ticket has spent time here, is currently here, or is past here
   const avgGateTimes = PHASE_ORDER.map((ph, idx) => {
-    // Ticket "reached" this phase if: it spent time here, is currently here, or is past here
     const reached = tickets.filter(t => {
-      if ((t.p[ph] || 0) > 0) return true; // spent time in this phase
-      if (t.c === ph) return true;           // currently in this phase
-      if (t.c === 'General Availability') return true; // completed
+      if ((t.p[ph] || 0) > 0) return true;          // spent time in this phase
+      if (t.pe && t.pe[ph]) return true;             // has phase entry date
+      if (t.c === ph) return true;                   // currently in this phase
       const curIdx = PHASE_ORDER.indexOf(t.c);
-      return curIdx > idx;                   // currently past this phase
+      if (curIdx > idx) return true;                 // currently past this phase (workflow status)
+      // For non-workflow statuses (Blocked, Waiting etc.), check if pe shows they went past idx
+      if (curIdx === -1) {
+        for (let j = idx; j < PHASE_ORDER.length; j++) {
+          if ((t.p[PHASE_ORDER[j]] || 0) > 0 || (t.pe && t.pe[PHASE_ORDER[j]])) return true;
+        }
+      }
+      return false;
     });
     if (!reached.length) return null;
     // Cumulative bd from creation to entering this phase =
