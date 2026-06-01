@@ -1348,21 +1348,21 @@ function buildThroughputChart() {
   // Current/incomplete quarter uses today's live status.
   const tickets = RAW.filter(i => NEW_WF_KEYS.has(i.k) && isRealTicket(i));
 
-  // Quarter end dates (last day of quarter)
-  const QUARTER_ENDS = {
-    'Q1 2026': '2026-04-30',
-    'Q2 2026': '2026-07-31',
-    'Q3 2026': '2026-10-31',
-    'Q4 2026': '2027-01-31',
-  };
+  // P44 fiscal quarters: Q1=Feb-Apr, Q2=May-Jul, Q3=Aug-Oct, Q4=Nov-Jan
+  const QUARTERS = [
+    { label: 'Q1 2026', start: '2026-02-01', end: '2026-04-30' },
+    { label: 'Q2 2026', start: '2026-05-01', end: '2026-07-31' },
+    { label: 'Q3 2026', start: '2026-08-01', end: '2026-10-31' },
+    { label: 'Q4 2026', start: '2026-11-01', end: '2027-01-31' },
+    { label: 'Q1 2027', start: '2027-02-01', end: '2027-04-30' },
+  ];
+  const QUARTER_ENDS = Object.fromEntries(QUARTERS.map(q => [q.label, q.end]));
   const today = new Date().toISOString().slice(0, 10);
 
-  // Determine which quarters have any tickets
-  const allQuarters = Object.keys(QUARTER_ENDS).filter(q => {
-    const qEnd = QUARTER_ENDS[q];
-    // Quarter is relevant if it has started (some ticket created by quarter end)
-    return tickets.some(t => t.cr <= qEnd);
-  });
+  // Only show quarters that have started and have at least one ticket
+  const allQuarters = QUARTERS
+    .filter(q => q.start <= today && tickets.some(t => t.cr <= (q.end < today ? q.end : today)))
+    .map(q => q.label);
 
   // For each ticket, determine its status at the end of a given quarter date
   function statusAtDate(t, dateStr) {
