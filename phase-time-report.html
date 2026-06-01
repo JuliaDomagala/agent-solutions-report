@@ -618,10 +618,12 @@ function computeAverages(rows, quarterFilter) {
     const curWfIdx = WORKFLOW_PHASE_ORDER.indexOf(issue.c);
     PHASE_COLS.forEach(p => {
       const v = issue.p[p] || 0;
-      if (v <= 0) return;
       const wfIdx = WORKFLOW_PHASE_ORDER.indexOf(p);
       const isActive = issue.c === p;
-      const isPassed = !isActive && (wfIdx >= 0 ? curWfIdx > wfIdx : v > 0);
+      // Ticket entered phase if: it's currently there, OR has a phase entry date, OR has recorded time
+      const entered = isActive || (issue.pe && issue.pe[p]) || v > 0;
+      // For workflow phases, also check if ticket has progressed past this phase
+      const isPassed = !isActive && entered && (wfIdx >= 0 ? curWfIdx > wfIdx : true);
       if (!isActive && !isPassed) return;
 
       if (quarterFilter) {
@@ -631,7 +633,7 @@ function computeAverages(rows, quarterFilter) {
       }
 
       ticketsByPhase[p].push(issue);
-      if (!isExcludedFromAvg) { totals[p] += v; counts[p]++; }
+      if (v > 0 && !isExcludedFromAvg) { totals[p] += v; counts[p]++; }
     });
   });
 
