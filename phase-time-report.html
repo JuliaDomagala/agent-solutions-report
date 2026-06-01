@@ -281,7 +281,7 @@
   <div class="trends-grid" id="trends-grid">
     <div class="chart-card" style="grid-column:1/-1;">
       <h3>OKR 6.3 &#8212; Phase Time Reduction: Q1 vs Q2 2026</h3>
-      <div class="chart-sub">New workflow tickets only &#183; Bars show average business days per phase &#183; <span style="color:#58a6ff;">&#9646;</span> Q1 baseline &#183; <span style="color:#56d364;">&#9646;</span> Q2 current (green = improved, red = regressed) &#183; <span style="color:#e3b341;">&#8212; &#8212;</span> 30% reduction target &#183; OKR target: end of Q2 FY27 (Jul 2026)</div>
+      <div class="chart-sub">New workflow tickets only &#183; Cohort: tickets that completed Ph3 (entered Dev Ready) in each quarter &#183; <span style="color:#58a6ff;">&#9646;</span> baseline active &nbsp; <span style="color:rgba(248,81,73,0.7);">&#9646;</span> baseline blocked/waiting &nbsp; <span style="color:#56d364;">&#9646;</span> current active (green = faster, red = slower) &nbsp; <span style="color:#e3b341;">&#8212; &#8212;</span> 30% target &#183; OKR = reduce total time to reach Ph4 by 30% by end of Q2 FY27</div>
       <div id="okr-headline" style="margin-bottom:16px;"></div>
       <canvas id="chart-okr-progress" style="max-height:340px;"></canvas>
     </div>
@@ -1010,47 +1010,43 @@ function prevQuarterLabel(qLabel) {
   return 'Q' + qn + ' ' + yr;
 }
 
-// OKR 6.3 chart &#8212; Q1 vs Q2 per-phase comparison with 30% target line
+// OKR 6.3 chart &#8212; Ph1-3 only, active vs blocked, Q-over-Q
+// Cohort: tickets that completed Ph3 (entered Ph4) in each quarter
 function buildOKRProgressChart() {
   const nwRows = RAW.filter(i => isRealTicket(i) && NEW_WF_KEYS.has(i.k));
   const today = new Date().toISOString().slice(0,10);
   const currentQ = quarterLabel(today);
   const prevQ = prevQuarterLabel(currentQ);
 
-  const WORKFLOW_PHASES = [
+  const ACTIVE_PHASES = [
     'Phase 1: Alignment & Requirements',
     'Phase 2: Prompt Build & Internal Validation',
     'Phase 3: External Testing',
-    'Phase 4: Ready for Development',
-    'Phase 5: AIA Integration',
-    'Phase 6: AP Integration',
-    'Phase 7: Beta',
-    'General Availability',
   ];
-  const SHORT_LABELS = ['Ph1\nAlign','Ph2\nBuild','Ph3\nTest','Ph4\nDev Ready','Ph5\nAIA','Ph6\nAP','Ph7\nBeta','GA'];
+  const BLOCKED_STATUSES = ['Blocked','Waiting For Customer / 3rd Party','Waiting For Additional Info','Waiting/Blocked'];
+  const PH4 = 'Phase 4: Ready for Development';
 
-  const baselineAvgs = computeAverages(nwRows, prevQ);
-  const currentAvgs  = computeAverages(nwRows, currentQ);
+  // Compute stats for a quarter: cohort = tickets that entered Ph4 in that quarter
+  function okrStats(q) {
+    const cohort = nwRows.filter(t => t.pe?.[PH4] && quarterLabel(t.pe[PH4]) === q);
+    if (!cohort.length) return { perPhaseActive: [null,null,null], activeTotal: null, blockedAvg: null, n: 0 };
+    const perPhaseActive = ACTIVE_PHASES.map(ph => {
+      const vals = cohort.map(t => t.p[ph] || 0);
+      return Math.round(vals.reduce((s,v)=>s+v,0) / vals.length * 10) / 10;
+    });
+    const activeTotals = cohort.map(t => ACTIVE_PHASES.reduce((s,ph)=>s+(t.p[ph]||0),0));
+    const activeTotal = Math.round(activeTotals.reduce((s,v)=>s+v,0)/cohort.length*10)/10;
+    const blockedVals = cohort.map(t => BLOCKED_STATUSES.reduce((s,st)=>s+(t.p[st]||0),0));
+    const blockedAvg = Math.round(blockedVals.reduce((s,v)=>s+v,0)/cohort.length*10)/10;
+    return { perPhaseActive, activeTotal, blockedAvg, total: Math.round((activeTotal+blockedAvg)*10)/10, n: cohort.length };
+  }
 
-  const baselineData = [], currentData = [], targetData = [], barColors = [];
-  WORKFLOW_PHASES.forEach(ph => {
-    const b = baselineAvgs.find(a => a.phase === ph)?.avg ?? null;
-    const c = currentAvgs.find(a => a.phase === ph)?.avg ?? null;
-    baselineData.push(b);
-    currentData.push(c);
-    targetData.push(b != null ? Math.round(b * 0.7 * 10) / 10 : null);
-    // Green if at/below target, amber if improved but not at target, red if worse
-    if (c != null && b != null) {
-      barColors.push(c <= b * 0.7 ? 'rgba(86,211,100,0.85)' : c < b ? 'rgba(86,211,100,0.5)' : 'rgba(248,81,73,0.65)');
-    } else {
-      barColors.push('rgba(86,211,100,0.5)');
-    }
-  });
+  const base = okrStats(prevQ);
+  const curr = okrStats(currentQ);
 
-  // Headline stats (workflow phases only, Ph1-5)
-  const WF5 = WORKFLOW_PHASES.slice(0, 5);
-  const bTotal = WF5.reduce((s, ph) => s + (baselineAvgs.find(a => a.phase === ph)?.avg || 0), 0);
-  const cTotal = WF5.reduce((s, ph) => s + (currentAvgs.find(a => a.phase === ph)?.avg || 0), 0);
+  // OKR target: 30% reduction in TOTAL time (active + blocked) to reach Ph4
+  const bTotal = base.total || 0;
+  const cTotal = curr.total || 0;
   const target = Math.round(bTotal * 0.7 * 10) / 10;
   const reduction = bTotal > 0 ? (bTotal - cTotal) / bTotal : 0;
   const progress = bTotal > 0 ? Math.min(100, Math.round((bTotal - cTotal) / (bTotal * 0.3) * 100)) : 0;
@@ -1058,53 +1054,84 @@ function buildOKRProgressChart() {
 
   const headline = document.getElementById('okr-headline');
   if (headline) {
-    headline.innerHTML = `<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;padding:12px 16px;background:var(--surface2);border-radius:8px;align-items:center;">
-      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">${prevQ || 'Baseline'} (Ph1&#8211;5 sum)</div><div style="font-size:20px;font-weight:700;color:var(--text);">${bTotal > 0 ? bTotal.toFixed(1) + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
-      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">${currentQ} Current</div><div style="font-size:20px;font-weight:700;color:${hColor};">${cTotal > 0 ? cTotal.toFixed(1) + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
-      <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Target (&#8722;30%)</div><div style="font-size:20px;font-weight:700;color:#e3b341;">${target > 0 ? target + '<span style="font-size:12px;font-weight:400;">bd</span>' : '&#8212;'}</div></div>
-      <div style="flex:1;min-width:220px;">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;">Progress to 30% OKR &nbsp;<strong style="color:${hColor};">${progress}%</strong>${reduction > 0 ? ' &nbsp;(&#8722;' + Math.round(reduction*100) + '% so far)' : ''}</div>
-        <div style="background:var(--border);border-radius:4px;height:10px;overflow:hidden;"><div style="width:${progress}%;height:100%;background:${hColor};border-radius:4px;transition:width 0.5s;"></div></div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Target: end of Q2 FY27 (Jul 2026) &nbsp;&#183;&nbsp; Active build time only (Ph1&#8211;5)</div>
-      </div>
-    </div>`;
+    const fmt = v => v != null ? v + '<span style="font-size:11px;font-weight:400;">bd</span>' : '&#8212;';
+    headline.innerHTML = `
+      <div style="display:flex;gap:0;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="background:var(--surface2);border-radius:8px 0 0 8px;padding:12px 20px;border:1px solid var(--border);">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${prevQ || 'Baseline'} &nbsp;<span style="font-weight:400;opacity:0.6;">(${base.n} tickets)</span></div>
+          <div style="display:flex;gap:20px;align-items:baseline;">
+            <div><div style="font-size:10px;color:#8b949e;">Active (Ph1&#8211;3)</div><div style="font-size:20px;font-weight:700;color:var(--text);">${fmt(base.activeTotal)}</div></div>
+            <div style="font-size:18px;color:var(--border);">+</div>
+            <div><div style="font-size:10px;color:#8b949e;">Blocked/Waiting</div><div style="font-size:20px;font-weight:700;color:#f85149;">${fmt(base.blockedAvg)}</div></div>
+            <div style="font-size:18px;color:var(--border);">=</div>
+            <div><div style="font-size:10px;color:#8b949e;">Total</div><div style="font-size:20px;font-weight:700;color:var(--text);">${fmt(bTotal)}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);padding:12px 20px;border:1px solid var(--border);border-left:none;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${currentQ} &nbsp;<span style="font-weight:400;opacity:0.6;">(${curr.n} tickets)</span></div>
+          <div style="display:flex;gap:20px;align-items:baseline;">
+            <div><div style="font-size:10px;color:#8b949e;">Active (Ph1&#8211;3)</div><div style="font-size:20px;font-weight:700;color:${curr.activeTotal>base.activeTotal?'#f85149':'#56d364'};">${fmt(curr.activeTotal)}</div></div>
+            <div style="font-size:18px;color:var(--border);">+</div>
+            <div><div style="font-size:10px;color:#8b949e;">Blocked/Waiting</div><div style="font-size:20px;font-weight:700;color:${curr.blockedAvg>base.blockedAvg?'#f85149':'#56d364'};">${fmt(curr.blockedAvg)}</div></div>
+            <div style="font-size:18px;color:var(--border);">=</div>
+            <div><div style="font-size:10px;color:#8b949e;">Total</div><div style="font-size:20px;font-weight:700;color:${hColor};">${fmt(cTotal)}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);padding:12px 20px;border:1px solid var(--border);border-left:none;border-radius:0 8px 8px 0;flex:1;min-width:220px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Target &#8722;30% &nbsp;&#183;&nbsp; End of Q2 FY27 (Jul 2026)</div>
+          <div style="font-size:20px;font-weight:700;color:#e3b341;margin-bottom:8px;">${fmt(target)} total</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Progress: <strong style="color:${hColor};">${progress}%</strong>${reduction > 0 ? ' &nbsp;(&#8722;' + Math.round(reduction*100) + '% achieved so far)' : ' &nbsp;(getting slower &#8593;)'}</div>
+          <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden;"><div style="width:${Math.max(0,progress)}%;height:100%;background:${hColor};border-radius:4px;"></div></div>
+        </div>
+      </div>`;
   }
 
   const ctx = document.getElementById('chart-okr-progress')?.getContext('2d');
   if (!ctx) return;
   if (window._okrProgressChart) { try { window._okrProgressChart.destroy(); } catch(e){} }
 
+  // Chart: 4 groups &#8212; Ph1, Ph2, Ph3, Blocked/Waiting
+  // Each group: Q1 stacked (active, lighter blocked) and Q2 stacked (active, lighter blocked)
+  const labels = ['Ph1: Alignment', 'Ph2: Build & Validation', 'Ph3: External Testing', 'Blocked & Waiting'];
+
+  const bActive = [...(base.perPhaseActive || [null,null,null]), null];
+  const bBlocked = [null, null, null, base.blockedAvg];
+  const cActive = [...(curr.perPhaseActive || [null,null,null]), null];
+  const cBlocked = [null, null, null, curr.blockedAvg];
+  const targetLine = [
+    base.perPhaseActive?.[0] != null ? Math.round(base.perPhaseActive[0]*0.7*10)/10 : null,
+    base.perPhaseActive?.[1] != null ? Math.round(base.perPhaseActive[1]*0.7*10)/10 : null,
+    base.perPhaseActive?.[2] != null ? Math.round(base.perPhaseActive[2]*0.7*10)/10 : null,
+    base.blockedAvg != null ? Math.round(base.blockedAvg*0.7*10)/10 : null,
+  ];
+
+  const cActiveColors = (curr.perPhaseActive || [null,null,null]).map((v,i) => {
+    const b = base.perPhaseActive?.[i];
+    if (v==null||b==null) return 'rgba(86,211,100,0.7)';
+    return v <= b*0.7 ? 'rgba(86,211,100,0.9)' : v < b ? 'rgba(86,211,100,0.6)' : 'rgba(248,81,73,0.7)';
+  });
+  cActiveColors.push('rgba(248,81,73,0.15)'); // blocked group placeholder
+
   window._okrProgressChart = new Chart(ctx, {
     data: {
-      labels: SHORT_LABELS,
+      labels,
       datasets: [
-        {
-          type: 'bar', label: (prevQ || 'Baseline') + ' avg',
-          data: baselineData,
-          backgroundColor: 'rgba(88,166,255,0.55)', borderColor: '#58a6ff', borderWidth: 1,
-        },
-        {
-          type: 'bar', label: (currentQ || 'Current') + ' avg',
-          data: currentData,
-          backgroundColor: barColors, borderColor: barColors.map(c => c.replace('0.85','1').replace('0.5','0.8').replace('0.65','0.9')), borderWidth: 1,
-        },
-        {
-          type: 'line', label: 'Target (&#8722;30%)',
-          data: targetData,
-          borderColor: '#e3b341', borderDash: [5,3], borderWidth: 2,
-          pointRadius: 5, pointBackgroundColor: '#e3b341', fill: false, tension: 0,
-        },
+        { type:'bar', label: (prevQ||'Baseline')+' active', data: bActive, backgroundColor:'rgba(88,166,255,0.65)', borderColor:'#58a6ff', borderWidth:1, stack:'base' },
+        { type:'bar', label: (prevQ||'Baseline')+' blocked/waiting', data: bBlocked, backgroundColor:'rgba(248,81,73,0.55)', borderColor:'#f85149', borderWidth:1, stack:'base' },
+        { type:'bar', label: (currentQ||'Current')+' active', data: cActive, backgroundColor: cActiveColors, borderWidth:1, stack:'curr' },
+        { type:'bar', label: (currentQ||'Current')+' blocked/waiting', data: cBlocked, backgroundColor:'rgba(248,81,73,0.4)', borderColor:'rgba(248,81,73,0.8)', borderWidth:1, stack:'curr' },
+        { type:'line', label:'Target (&#8722;30%)', data: targetLine, borderColor:'#e3b341', borderDash:[5,3], borderWidth:2, pointRadius:5, pointBackgroundColor:'#e3b341', fill:false, tension:0 },
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: true,
+      responsive:true, maintainAspectRatio:true,
       plugins: {
-        legend: { labels: { color: '#e6edf3', font: { size: 11 }, boxWidth: 14 } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (c.parsed.y != null ? c.parsed.y + 'bd' : 'no data') } }
+        legend:{ labels:{ color:'#e6edf3', font:{size:11}, boxWidth:12 } },
+        tooltip:{ callbacks:{ label: c => c.dataset.label+': '+(c.parsed.y!=null?c.parsed.y+'bd':'no data') } }
       },
       scales: {
-        x: { ticks: { color: '#8b949e', font: { size: 11 } }, grid: { color: 'rgba(139,148,158,0.12)' } },
-        y: { beginAtZero: true, ticks: { color: '#8b949e', font: { size: 11 }, callback: v => v + 'bd' }, grid: { color: 'rgba(139,148,158,0.12)' } }
+        x:{ ticks:{color:'#8b949e',font:{size:11}}, grid:{color:'rgba(139,148,158,0.12)'} },
+        y:{ beginAtZero:true, stacked:false, ticks:{color:'#8b949e',font:{size:11},callback:v=>v+'bd'}, grid:{color:'rgba(139,148,158,0.12)'} }
       }
     }
   });
