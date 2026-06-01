@@ -197,14 +197,6 @@
     <option value="3">3 SP</option>
     <option value="4+">4+ SP</option>
   </select>
-  <label>Project</label>
-  <select id="filter-project">
-    <option value="">All</option>
-    <option>PROMPT</option>
-    <option>IRL</option>
-    <option>PIR</option>
-    <option>TIER3</option>
-  </select>
   <label>Status</label>
   <select id="filter-status">
     <option value="">All</option>
@@ -2010,7 +2002,6 @@ document.getElementById('tabs').addEventListener('click', e => {
 
   if (isTrends) renderTrends(document.getElementById('trends-filter-type').value);
   else if (!isMethodology) {
-    document.getElementById('filter-project').value = '';
     applyFilters();
   }
 });
@@ -2035,7 +2026,7 @@ function tabFilteredBase() {
 
 function applyFilters() {
   const assignee = document.getElementById('filter-assignee').value;
-  const project = document.getElementById('filter-project').value;
+
   const status = document.getElementById('filter-status').value;
   const search = document.getElementById('filter-search').value.toLowerCase();
   const quarterFilter = document.getElementById('filter-quarter')?.value || '';
@@ -2045,7 +2036,7 @@ function applyFilters() {
   currentRows = tabFilteredBase().filter(issue => {
     if (!isRealTicket(issue)) return false;
     if (assignee && (issue.af || issue.a) !== assignee) return false;
-    if (project && !issue.k.startsWith(project + '-')) return false;
+
     if (status && issue.c !== status) return false;
     if (search && !issue.k.toLowerCase().includes(search) && !issue.s.toLowerCase().includes(search)) return false;
     if (quarterFilter && issue.cr) {
@@ -2091,7 +2082,7 @@ statuses.forEach(s => {
 try { const d = document.getElementById('updated-date'); if (d) { const rd = new Date(REPORT_DATE + 'T12:00:00'); d.textContent = 'Data as of ' + rd.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'}); } } catch(e) {}
 
 // Event listeners
-['filter-assignee','filter-sp','filter-project','filter-status','filter-search','table-exclude-blocked'].forEach(id => {
+['filter-assignee','filter-sp','filter-status','filter-search','table-exclude-blocked'].forEach(id => {
   const el = document.getElementById(id);
   if (el) { el.addEventListener('change', applyFilters); el.addEventListener('input', applyFilters); }
 });
